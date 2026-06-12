@@ -1,0 +1,110 @@
+name: Release Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g. 1.9.0)'
+        required: false
+        default: ''
+      target:
+        description: 'Build target'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - macos-only
+          - windows-only
+
+jobs:
+  build-macos:
+    name: macOS (aarch64)
+    runs-on: macos-latest
+    if: ${{ github.event.inputs.target == 'all' || github.event.inputs.target == 'macos-only' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Check Rust compilation
+        run: cargo check --manifest-path src-tauri/Cargo.toml
+
+      - name: Tauri build
+        run: npx tauri build --target aarch64-apple-darwin
+
+      - name: Build beta DMG with hdiutil
+        run: scripts/build-macos-dmg.sh
+
+      - name: Upload .app artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: md-quicklook-macos-app
+          path: src-tauri/target/release/bundle/macos/md-quicklook.app
+          if-no-files-found: error
+
+      - name: Upload .dmg artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: md-quicklook-macos-dmg
+          path: src-tauri/target/release/bundle/dmg/md-quicklook_*.dmg
+          if-no-files-found: warn
+
+  build-windows:
+    name: Windows (x64)
+    runs-on: windows-latest
+    if: ${{ github.event.inputs.target == 'all' || github.event.inputs.target == 'windows-only' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build
+
+      - name: Check Rust compilation
+        run: cargo check --manifest-path src-tauri/Cargo.toml
+
+      - name: Tauri build
+        run: npx tauri build --target x86_64-pc-windows-msvc
+
+      - name: Upload NSIS installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: md-quicklook-windows-installer
+          path: src-tauri/target/release/bundle/nsis/md-quicklook_*_x64-setup.exe
+          if-no-files-found: error
+
+      - name: Upload unpacked .exe
+        uses: actions/upload-artifact@v4
+        with:
+          name: md-quicklook-windows-exe
+          path: src-tauri/target/release/md-quicklook.exe
+          if-no-files-found: warn
