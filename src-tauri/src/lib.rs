@@ -177,7 +177,10 @@ fn find_markdown_file_in_args() -> Option<String> {
             if url.scheme() != "file" {
                 continue;
             }
-            url.to_file_path().ok()?
+            match url.to_file_path() {
+                Ok(path) => path,
+                Err(_) => continue,
+            }
         } else {
             PathBuf::from(&arg)
         };
@@ -410,19 +413,23 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app_handle, event| {
-            match event {
-                #[cfg(target_os = "macos")]
-                tauri::RunEvent::Opened { urls } => {
-                    for url in &urls {
-                        let path = url
-                            .to_file_path()
-                            .unwrap_or_else(|_| std::path::PathBuf::from(url.as_str()))
-                            .to_string_lossy()
-                            .to_string();
-                        let _ = app_handle.emit("open-file", path);
-                    }
+            #[cfg(target_os = "macos")]
+            if let tauri::RunEvent::Opened { urls } = event {
+                for url in &urls {
+                    let path = url
+                        .to_file_path()
+                        .unwrap_or_else(|_| std::path::PathBuf::from(url.as_str()))
+                        .to_string_lossy()
+                        .to_string();
+                    let _ = app_handle.emit("open-file", path);
                 }
-                _ => {}
+            }
+            // Suppress unused-variable warnings on non-macOS platforms
+            // where the cfg-gated block above does not compile.
+            #[cfg(not(target_os = "macos"))]
+            {
+                let _ = &app_handle;
+                let _ = &event;
             }
         });
 }
