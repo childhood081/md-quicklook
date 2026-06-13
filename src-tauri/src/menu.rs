@@ -125,23 +125,30 @@ fn build_menu_zh<R: Runtime>(app_handle: &AppHandle<R>) -> tauri::Result<tauri::
     };
 
     // ── App submenu ──
-    let mut app_submenu_builder = SubmenuBuilder::with_id(app_handle, APP_SUBMENU_ID, "md-quicklook")
-        .item(
-            &PredefinedMenuItem::about(app_handle, Some("关于 md-quicklook"), Some(about_meta()))?
+    let app_submenu_builder =
+        SubmenuBuilder::with_id(app_handle, APP_SUBMENU_ID, "md-quicklook").item(
+            &PredefinedMenuItem::about(app_handle, Some("关于 md-quicklook"), Some(about_meta()))?,
         );
     #[cfg(target_os = "macos")]
-    {
-        app_submenu_builder = app_submenu_builder
-            .separator()
-            .item(&PredefinedMenuItem::services(app_handle, Some("服务"))?)
-            .separator()
-            .item(&PredefinedMenuItem::hide(app_handle, Some("隐藏 md-quicklook"))?)
-            .item(&PredefinedMenuItem::hide_others(app_handle, Some("隐藏其他"))?)
-            .item(&PredefinedMenuItem::show_all(app_handle, Some("显示全部"))?);
-    }
+    let app_submenu_builder = app_submenu_builder
+        .separator()
+        .item(&PredefinedMenuItem::services(app_handle, Some("服务"))?)
+        .separator()
+        .item(&PredefinedMenuItem::hide(
+            app_handle,
+            Some("隐藏 md-quicklook"),
+        )?)
+        .item(&PredefinedMenuItem::hide_others(
+            app_handle,
+            Some("隐藏其他"),
+        )?)
+        .item(&PredefinedMenuItem::show_all(app_handle, Some("显示全部"))?);
     let app_submenu = app_submenu_builder
         .separator()
-        .item(&PredefinedMenuItem::quit(app_handle, Some("退出 md-quicklook"))?)
+        .item(&PredefinedMenuItem::quit(
+            app_handle,
+            Some("退出 md-quicklook"),
+        )?)
         .build()?;
 
     // ── File submenu ──
@@ -163,16 +170,13 @@ fn build_menu_zh<R: Runtime>(app_handle: &AppHandle<R>) -> tauri::Result<tauri::
                 .build(app_handle)?,
         )
         .separator()
-        .item(
-            &MenuItemBuilder::with_id(MENU_FILE_EXPORT_WORD, "导出 Word...")
-                .build(app_handle)?,
-        )
-        .item(
-            &MenuItemBuilder::with_id(MENU_FILE_EXPORT_EXCEL, "导出 Excel...")
-                .build(app_handle)?,
-        )
+        .item(&MenuItemBuilder::with_id(MENU_FILE_EXPORT_WORD, "导出 Word...").build(app_handle)?)
+        .item(&MenuItemBuilder::with_id(MENU_FILE_EXPORT_EXCEL, "导出 Excel...").build(app_handle)?)
         .separator()
-        .item(&PredefinedMenuItem::close_window(app_handle, Some("关闭窗口"))?)
+        .item(&PredefinedMenuItem::close_window(
+            app_handle,
+            Some("关闭窗口"),
+        )?)
         .build()?;
 
     // ── Edit submenu ──
@@ -251,18 +255,14 @@ fn build_menu_zh<R: Runtime>(app_handle: &AppHandle<R>) -> tauri::Result<tauri::
 
     // ── Help submenu ──
     let help_submenu = SubmenuBuilder::with_id(app_handle, HELP_SUBMENU_ID, "帮助")
-        .item(
-            &MenuItemBuilder::with_id(MENU_HELP_GUIDE, "使用说明")
-                .build(app_handle)?,
-        )
-        .item(
-            &MenuItemBuilder::with_id(MENU_HELP_TESTING, "测试清单")
-                .build(app_handle)?,
-        )
+        .item(&MenuItemBuilder::with_id(MENU_HELP_GUIDE, "使用说明").build(app_handle)?)
+        .item(&MenuItemBuilder::with_id(MENU_HELP_TESTING, "测试清单").build(app_handle)?)
         .separator()
-        .item(
-            &PredefinedMenuItem::about(app_handle, Some("关于"), Some(about_meta()))?
-        )
+        .item(&PredefinedMenuItem::about(
+            app_handle,
+            Some("关于"),
+            Some(about_meta()),
+        )?)
         .build()?;
 
     // ── Build the menu bar ──
@@ -287,21 +287,30 @@ fn build_menu_en<R: Runtime>(app_handle: &AppHandle<R>) -> tauri::Result<tauri::
     };
 
     // ── App submenu ──
-    let mut app_submenu_builder = SubmenuBuilder::with_id(app_handle, APP_SUBMENU_ID, "md-quicklook")
-        .item(&PredefinedMenuItem::about(app_handle, Some("About md-quicklook"), Some(about_meta()))?);
+    let app_submenu_builder =
+        SubmenuBuilder::with_id(app_handle, APP_SUBMENU_ID, "md-quicklook").item(
+            &PredefinedMenuItem::about(app_handle, Some("About md-quicklook"), Some(about_meta()))?,
+        );
     #[cfg(target_os = "macos")]
-    {
-        app_submenu_builder = app_submenu_builder
-            .separator()
-            .item(&PredefinedMenuItem::services(app_handle, Some("Services"))?)
-            .separator()
-            .item(&PredefinedMenuItem::hide(app_handle, Some("Hide md-quicklook"))?)
-            .item(&PredefinedMenuItem::hide_others(app_handle, Some("Hide Others"))?)
-            .item(&PredefinedMenuItem::show_all(app_handle, Some("Show All"))?);
-    }
+    let app_submenu_builder = app_submenu_builder
+        .separator()
+        .item(&PredefinedMenuItem::services(app_handle, Some("Services"))?)
+        .separator()
+        .item(&PredefinedMenuItem::hide(
+            app_handle,
+            Some("Hide md-quicklook"),
+        )?)
+        .item(&PredefinedMenuItem::hide_others(
+            app_handle,
+            Some("Hide Others"),
+        )?)
+        .item(&PredefinedMenuItem::show_all(app_handle, Some("Show All"))?);
     let app_submenu = app_submenu_builder
         .separator()
-        .item(&PredefinedMenuItem::quit(app_handle, Some("Quit md-quicklook"))?)
+        .item(&PredefinedMenuItem::quit(
+            app_handle,
+            Some("Quit md-quicklook"),
+        )?)
         .build()?;
 
     // ── File submenu ──
@@ -323,16 +332,16 @@ fn build_menu_en<R: Runtime>(app_handle: &AppHandle<R>) -> tauri::Result<tauri::
                 .build(app_handle)?,
         )
         .separator()
-        .item(
-            &MenuItemBuilder::with_id(MENU_FILE_EXPORT_WORD, "Export Word...")
-                .build(app_handle)?,
-        )
+        .item(&MenuItemBuilder::with_id(MENU_FILE_EXPORT_WORD, "Export Word...").build(app_handle)?)
         .item(
             &MenuItemBuilder::with_id(MENU_FILE_EXPORT_EXCEL, "Export Excel...")
                 .build(app_handle)?,
         )
         .separator()
-        .item(&PredefinedMenuItem::close_window(app_handle, Some("Close Window"))?)
+        .item(&PredefinedMenuItem::close_window(
+            app_handle,
+            Some("Close Window"),
+        )?)
         .build()?;
 
     // ── Edit submenu ──
@@ -343,7 +352,10 @@ fn build_menu_en<R: Runtime>(app_handle: &AppHandle<R>) -> tauri::Result<tauri::
         .item(&PredefinedMenuItem::cut(app_handle, Some("Cut"))?)
         .item(&PredefinedMenuItem::copy(app_handle, Some("Copy"))?)
         .item(&PredefinedMenuItem::paste(app_handle, Some("Paste"))?)
-        .item(&PredefinedMenuItem::select_all(app_handle, Some("Select All"))?)
+        .item(&PredefinedMenuItem::select_all(
+            app_handle,
+            Some("Select All"),
+        )?)
         .separator()
         .item(
             &MenuItemBuilder::with_id("edit.find", "Find...")
@@ -392,7 +404,10 @@ fn build_menu_en<R: Runtime>(app_handle: &AppHandle<R>) -> tauri::Result<tauri::
                 .build(app_handle)?,
         )
         .separator()
-        .item(&PredefinedMenuItem::fullscreen(app_handle, Some("Full Screen"))?)
+        .item(&PredefinedMenuItem::fullscreen(
+            app_handle,
+            Some("Full Screen"),
+        )?)
         .build()?;
 
     // ── Language submenu (English active) ──
@@ -411,18 +426,14 @@ fn build_menu_en<R: Runtime>(app_handle: &AppHandle<R>) -> tauri::Result<tauri::
 
     // ── Help submenu ──
     let help_submenu = SubmenuBuilder::with_id(app_handle, HELP_SUBMENU_ID, "Help")
-        .item(
-            &MenuItemBuilder::with_id(MENU_HELP_GUIDE, "User Guide")
-                .build(app_handle)?,
-        )
-        .item(
-            &MenuItemBuilder::with_id(MENU_HELP_TESTING, "Testing Checklist")
-                .build(app_handle)?,
-        )
+        .item(&MenuItemBuilder::with_id(MENU_HELP_GUIDE, "User Guide").build(app_handle)?)
+        .item(&MenuItemBuilder::with_id(MENU_HELP_TESTING, "Testing Checklist").build(app_handle)?)
         .separator()
-        .item(
-            &PredefinedMenuItem::about(app_handle, Some("About"), Some(about_meta()))?
-        )
+        .item(&PredefinedMenuItem::about(
+            app_handle,
+            Some("About"),
+            Some(about_meta()),
+        )?)
         .build()?;
 
     // ── Build the menu bar ──

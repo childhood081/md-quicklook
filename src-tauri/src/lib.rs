@@ -173,10 +173,18 @@ fn find_markdown_file_in_args() -> Option<String> {
         if arg.starts_with('-') {
             continue;
         }
-        let path = Path::new(&arg);
+        let path = if let Ok(url) = tauri::Url::parse(&arg) {
+            if url.scheme() != "file" {
+                continue;
+            }
+            url.to_file_path().ok()?
+        } else {
+            PathBuf::from(&arg)
+        };
+
         if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
             if ext.eq_ignore_ascii_case("md") || ext.eq_ignore_ascii_case("markdown") {
-                return Some(canonical_display_path(&arg));
+                return Some(canonical_display_path(&path.to_string_lossy()));
             }
         }
     }
@@ -329,9 +337,7 @@ pub fn run() {
                             config.language = menu::Language::ZhCN;
                             menu::save_config(app_handle, &config);
                         }
-                        if let Ok(new_menu) =
-                            menu::build_menu(app_handle, menu::Language::ZhCN)
-                        {
+                        if let Ok(new_menu) = menu::build_menu(app_handle, menu::Language::ZhCN) {
                             let _ = app_handle.set_menu(new_menu);
                         }
                         let _ = app_handle.emit("language-changed", "zh-CN");
@@ -342,9 +348,7 @@ pub fn run() {
                             config.language = menu::Language::EnUS;
                             menu::save_config(app_handle, &config);
                         }
-                        if let Ok(new_menu) =
-                            menu::build_menu(app_handle, menu::Language::EnUS)
-                        {
+                        if let Ok(new_menu) = menu::build_menu(app_handle, menu::Language::EnUS) {
                             let _ = app_handle.set_menu(new_menu);
                         }
                         let _ = app_handle.emit("language-changed", "en-US");
@@ -406,16 +410,19 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app_handle, event| {
-            // Handle macOS file-open event when app is already running
-            if let tauri::RunEvent::Opened { urls } = event {
-                for url in &urls {
-                    let path = url
-                        .to_file_path()
-                        .unwrap_or_else(|_| std::path::PathBuf::from(url.as_str()))
-                        .to_string_lossy()
-                        .to_string();
-                    let _ = app_handle.emit("open-file", path);
+            match event {
+                #[cfg(target_os = "macos")]
+                tauri::RunEvent::Opened { urls } => {
+                    for url in &urls {
+                        let path = url
+                            .to_file_path()
+                            .unwrap_or_else(|_| std::path::PathBuf::from(url.as_str()))
+                            .to_string_lossy()
+                            .to_string();
+                        let _ = app_handle.emit("open-file", path);
+                    }
                 }
+                _ => {}
             }
         });
 }
