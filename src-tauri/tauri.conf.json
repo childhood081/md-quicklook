@@ -12,7 +12,8 @@
   "app": {
     "windows": [
       {
-        "title": "md-quicklook",
+        "title": "AI 文档快看",
+        "url": "index.html",
         "width": 1200,
         "height": 800,
         "minWidth": 800,
@@ -22,7 +23,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:"
+      "csp": "default-src 'self'; connect-src 'self' ipc: http://ipc.localhost; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:"
     }
   },
   "bundle": {

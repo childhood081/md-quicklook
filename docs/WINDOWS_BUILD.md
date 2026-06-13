@@ -147,7 +147,7 @@ npx tauri build
 
 1. 先打开 md-quicklook（显示欢迎页或已打开文件）
 2. 在文件资源管理器中双击另一个 `.md` 文件
-3. 确认应用切换到新文件（通过 `RunEvent::Opened` 事件处理）
+3. 确认应用通过 CLI args 打开目标文件
 
 ## Windows 菜单测试
 

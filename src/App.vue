@@ -12,9 +12,11 @@ import ToastNotification from './components/ToastNotification.vue'
 import { listen } from '@tauri-apps/api/event'
 import { invoke } from '@tauri-apps/api/core'
 import { open, save } from '@tauri-apps/plugin-dialog'
-import { getCurrentWebview } from '@tauri-apps/api/webview'
+import { getCurrentWindow } from '@tauri-apps/api/window'
 import { useI18n } from 'vue-i18n'
 import { setLocale } from './i18n'
+import { runEditorCommand, type EditorCommand } from './utils/editorCommands'
+import type { MarkdownMetadata } from './utils/markdown'
 
 const store = useEditorStore()
 const { error: showError, warning: showWarning, success: showSuccess } = useToast()
@@ -24,7 +26,6 @@ let unlistenMenuAction: (() => void) | null = null
 let unlistenLanguageChanged: (() => void) | null = null
 
 const showOutline = ref(true)
-const zoomLevel = ref(1.0)
 
 function addRecentFile(path: string) {
   try {
@@ -129,23 +130,75 @@ async function handleMenuAction(action: string) {
         break
       }
       case 'view.zoom_in': {
-        zoomLevel.value = Math.min(zoomLevel.value + 0.1, 3.0)
-        await getCurrentWebview().setZoom(zoomLevel.value)
+        store.zoomIn()
         break
       }
       case 'view.zoom_out': {
-        zoomLevel.value = Math.max(zoomLevel.value - 0.1, 0.3)
-        await getCurrentWebview().setZoom(zoomLevel.value)
+        store.zoomOut()
         break
       }
       case 'view.actual_size': {
-        zoomLevel.value = 1.0
-        await getCurrentWebview().setZoom(1.0)
+        store.resetZoom()
         break
       }
+      case 'view.fullscreen': {
+        const win = getCurrentWindow()
+        await win.setFullscreen(!(await win.isFullscreen()))
+        break
+      }
+      case 'edit.undo':
+      case 'edit.redo':
+      case 'edit.cut':
+      case 'edit.copy':
+      case 'edit.paste':
+      case 'edit.select_all':
       case 'edit.find': {
-        // Focus the current editor's find/search
-        // The editors handle their own find via Ctrl+F / Cmd+F natively
+        await handleEditAction(action)
+        break
+      }
+      case 'edit.insert_front_matter': {
+        if (!store.filePath) {
+          showWarning(t('error.needOpenFile'))
+          break
+        }
+        const inserted = store.insertFrontMatter()
+        if (inserted) showSuccess(t('frontMatter.inserted'))
+        else showWarning(t('frontMatter.alreadyExists'))
+        break
+      }
+      case 'edit.edit_front_matter': {
+        if (!store.filePath) {
+          showWarning(t('error.needOpenFile'))
+          break
+        }
+        const metadata = promptFrontMatterMetadata()
+        if (!metadata) break
+        store.updateFrontMatter(metadata)
+        showSuccess(t('frontMatter.updated'))
+        break
+      }
+      case 'edit.clear_front_matter': {
+        if (!store.filePath) {
+          showWarning(t('error.needOpenFile'))
+          break
+        }
+        if (!store.getFrontMatter().hasFrontMatter) {
+          showWarning(t('frontMatter.notFound'))
+          break
+        }
+        if (!window.confirm(t('frontMatter.confirmClear'))) break
+        const cleared = store.clearFrontMatter()
+        if (cleared) showSuccess(t('frontMatter.cleared'))
+        break
+      }
+      case 'edit.generate_title_from_front_matter': {
+        if (!store.filePath) {
+          showWarning(t('error.needOpenFile'))
+          break
+        }
+        const generated = store.generateTitleFromMetadata()
+        if (generated) showSuccess(t('frontMatter.titleGenerated'))
+        else showWarning(t('frontMatter.cannotGenerateTitle'))
         break
       }
       case 'help.guide': {
@@ -162,6 +215,90 @@ async function handleMenuAction(action: string) {
   }
 }
 
+function toEditorCommand(action: string): EditorCommand | null {
+  switch (action) {
+    case 'edit.undo':
+      return 'undo'
+    case 'edit.redo':
+      return 'redo'
+    case 'edit.cut':
+      return 'cut'
+    case 'edit.copy':
+      return 'copy'
+    case 'edit.paste':
+      return 'paste'
+    case 'edit.select_all':
+      return 'selectAll'
+    case 'edit.find':
+      return 'find'
+    default:
+      return null
+  }
+}
+
+async function handleEditAction(action: string) {
+  const command = toEditorCommand(action)
+  if (!command) return
+
+  if (store.mode === 'reading') {
+    if (command === 'find') {
+      findInReadingView()
+      return
+    }
+    if (command === 'copy' || command === 'selectAll') {
+      if (document.execCommand(command === 'selectAll' ? 'selectAll' : 'copy')) return
+    }
+    showWarning(t('edit.unsupportedMode'))
+    return
+  }
+
+  const handled = await runEditorCommand(command)
+  if (!handled) {
+    showWarning(command === 'find' ? t('edit.findUnsupported') : t('edit.unsupportedMode'))
+  }
+}
+
+function findInReadingView() {
+  const query = window.prompt(t('edit.findPrompt'))
+  if (!query) return
+
+  const finder = (window as Window & {
+    find?: (searchString: string, caseSensitive?: boolean, backwards?: boolean, wrap?: boolean) => boolean
+  }).find
+
+  const found = finder?.(query, false, false, true) ?? false
+  if (!found) showWarning(t('edit.findNoMatch'))
+}
+
+function promptValue(key: string, initialValue = ''): string | null {
+  return window.prompt(t(key), initialValue)
+}
+
+function promptFrontMatterMetadata(): MarkdownMetadata | null {
+  const current = store.getFrontMatter().metadata
+  const title = promptValue('frontMatter.promptTitle', current.title ?? '')
+  if (title === null) return null
+  const subtitle = promptValue('frontMatter.promptSubtitle', current.subtitle ?? '')
+  if (subtitle === null) return null
+  const author = promptValue('frontMatter.promptAuthor', current.author ?? '')
+  if (author === null) return null
+  const date = promptValue('frontMatter.promptDate', current.date ?? '')
+  if (date === null) return null
+  const tagsInput = promptValue('frontMatter.promptTags', current.tags?.join(', ') ?? '')
+  if (tagsInput === null) return null
+
+  return {
+    title,
+    subtitle,
+    author,
+    date,
+    tags: tagsInput
+      .split(/[,\n]/)
+      .map((tag) => tag.trim())
+      .filter(Boolean),
+  }
+}
+
 onMounted(async () => {
   // Sync initial language from backend settings
   try {
@@ -172,33 +309,45 @@ onMounted(async () => {
   }
 
   // Listen for language changes from native menu
-  unlistenLanguageChanged = await listen<string>('language-changed', (event) => {
-    setLocale(event.payload as 'zh-CN' | 'en-US')
-  })
+  try {
+    unlistenLanguageChanged = await listen<string>('language-changed', (event) => {
+      setLocale(event.payload as 'zh-CN' | 'en-US')
+    })
+  } catch {
+    // Keep the current locale if native event listening is unavailable.
+  }
 
   // Listen for file-open event from Tauri backend (CLI args or OS file association)
-  unlistenOpenFile = await listen<string>('open-file', async (event) => {
-    try {
-      await store.loadFile(event.payload)
-      addRecentFile(event.payload)
-    } catch (e) {
-      showError(e instanceof Error ? e.message : String(e))
-    }
-  })
+  try {
+    unlistenOpenFile = await listen<string>('open-file', async (event) => {
+      try {
+        await store.loadFile(event.payload)
+        addRecentFile(event.payload)
+      } catch (e) {
+        showError(e instanceof Error ? e.message : String(e))
+      }
+    })
+  } catch {
+    // Initial CLI args still load through the initial_file command below.
+  }
 
   // Listen for menu actions from native menu bar
-  unlistenMenuAction = await listen<string>('menu-action', async (event) => {
-    await handleMenuAction(event.payload)
-  })
+  try {
+    unlistenMenuAction = await listen<string>('menu-action', async (event) => {
+      await handleMenuAction(event.payload)
+    })
+  } catch {
+    // Native menu events are optional; toolbar actions remain available.
+  }
 
-  const initialFile = await invoke<string | null>('initial_file')
-  if (initialFile) {
-    try {
+  try {
+    const initialFile = await invoke<string | null>('initial_file')
+    if (initialFile) {
       await store.loadFile(initialFile)
       addRecentFile(initialFile)
-    } catch (e) {
-      showError(e instanceof Error ? e.message : String(e))
     }
+  } catch (e) {
+    showError(e instanceof Error ? e.message : String(e))
   }
 })
 
@@ -217,7 +366,10 @@ onUnmounted(() => {
     <!-- Main content area -->
     <div v-if="store.filePath" class="flex-1 flex overflow-hidden">
       <!-- Left: reader / source editor -->
-      <div class="flex-1 flex overflow-hidden">
+      <div
+        class="flex-1 flex overflow-hidden document-zoom"
+        :style="{ '--document-zoom': String(store.zoomLevel) }"
+      >
         <ReaderView v-if="store.mode === 'reading'" />
         <RichEditor v-else-if="store.mode === 'editing'" />
         <SourceEditor v-else-if="store.mode === 'source'" />
@@ -236,3 +388,9 @@ onUnmounted(() => {
     <ToastNotification />
   </div>
 </template>
+
+<style scoped>
+.document-zoom {
+  zoom: var(--document-zoom);
+}
+</style>

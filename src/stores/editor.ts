@@ -4,6 +4,14 @@ import { invoke } from '@tauri-apps/api/core'
 import { save } from '@tauri-apps/plugin-dialog'
 import { generateXlsxBytes } from '../utils/exportExcel'
 import { generateDocxBytes } from '../utils/exportDocx'
+import {
+  generateTitleFromFrontMatter,
+  insertFrontMatterTemplate,
+  parseFrontMatter,
+  removeFrontMatter,
+  type MarkdownMetadata,
+  upsertFrontMatter,
+} from '../utils/markdown'
 import { i18n } from '../i18n'
 
 export type AppMode = 'reading' | 'editing' | 'source'
@@ -20,6 +28,7 @@ export const useEditorStore = defineStore('editor', () => {
   const originalContent = ref('')
   const currentContent = ref('')
   const mode = ref<AppMode>('reading')
+  const zoomLevel = ref(1)
   const saveStatus = ref<SaveStatus>('idle')
   const lastError = ref('')
   const isModified = computed(() => currentContent.value !== originalContent.value)
@@ -172,6 +181,47 @@ export const useEditorStore = defineStore('editor', () => {
     mode.value = m
   }
 
+  function zoomIn() {
+    zoomLevel.value = Math.min(2, Math.round((zoomLevel.value + 0.1) * 10) / 10)
+  }
+
+  function zoomOut() {
+    zoomLevel.value = Math.max(0.5, Math.round((zoomLevel.value - 0.1) * 10) / 10)
+  }
+
+  function resetZoom() {
+    zoomLevel.value = 1
+  }
+
+  function insertFrontMatter(): boolean {
+    const nextContent = insertFrontMatterTemplate(currentContent.value)
+    if (nextContent === currentContent.value) return false
+    setContent(nextContent)
+    return true
+  }
+
+  function getFrontMatter() {
+    return parseFrontMatter(currentContent.value)
+  }
+
+  function updateFrontMatter(metadata: MarkdownMetadata) {
+    setContent(upsertFrontMatter(currentContent.value, metadata))
+  }
+
+  function clearFrontMatter(): boolean {
+    const nextContent = removeFrontMatter(currentContent.value)
+    if (nextContent === currentContent.value) return false
+    setContent(nextContent)
+    return true
+  }
+
+  function generateTitleFromMetadata(): boolean {
+    const nextContent = generateTitleFromFrontMatter(currentContent.value)
+    if (nextContent === currentContent.value) return false
+    setContent(nextContent)
+    return true
+  }
+
   function defaultExportName(extension: string): string {
     const base = fileName.value.replace(/\.[^.]+$/, '') || 'untitled'
     return `${base}.${extension}`
@@ -252,7 +302,10 @@ export const useEditorStore = defineStore('editor', () => {
 
   return {
     filePath, fileName, originalContent, currentContent,
-    mode, saveStatus, lastError, isModified,
-    loadFile, saveFile, manualSave, setContent, setMode, exportTablesToExcel, exportToWord,
+    mode, zoomLevel, saveStatus, lastError, isModified,
+    loadFile, saveFile, manualSave, setContent, setMode,
+    zoomIn, zoomOut, resetZoom,
+    insertFrontMatter, getFrontMatter, updateFrontMatter, clearFrontMatter, generateTitleFromMetadata,
+    exportTablesToExcel, exportToWord,
   }
 })

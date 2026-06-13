@@ -1,10 +1,29 @@
 import MarkdownIt from 'markdown-it'
-import { createHighlighter, type BuiltinLanguage } from 'shiki'
+import type { BuiltinLanguage } from 'shiki'
 
-let _highlighter: Awaited<ReturnType<typeof createHighlighter>> | null = null
+type CreateHighlighter = typeof import('shiki')['createHighlighter']
+type Highlighter = Awaited<ReturnType<CreateHighlighter>>
+export type MarkdownMetadata = {
+  title?: string
+  subtitle?: string
+  date?: string
+  author?: string
+  tags?: string[]
+}
+
+export type ParsedFrontMatter = {
+  metadata: MarkdownMetadata
+  raw: string
+  body: string
+  hasFrontMatter: boolean
+  bodyStartLine: number
+}
+
+let _highlighter: Highlighter | null = null
 
 async function getHighlighter() {
   if (!_highlighter) {
+    const { createHighlighter } = await import('shiki')
     _highlighter = await createHighlighter({
       themes: ['github-dark'],
       langs: [] as BuiltinLanguage[],
@@ -15,6 +34,8 @@ async function getHighlighter() {
 
 // Cache for loaded languages
 const loadedLangs = new Set<string>()
+
+const supportedFrontMatterFields = new Set(['title', 'subtitle', 'date', 'author', 'tags'])
 
 async function ensureLang(lang: string) {
   const hl = await getHighlighter()
@@ -137,11 +158,222 @@ const md = new MarkdownIt({
 
 md.validateLink = isSafeUrl
 
+function normalizeLineEndings(content: string): string {
+  return content.replace(/\r\n?/g, '\n')
+}
+
+function parseTagsValue(value: string): string[] {
+  const trimmed = value.trim()
+  if (!trimmed) return []
+  if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+    return trimmed
+      .slice(1, -1)
+      .split(',')
+      .map((tag) => tag.trim().replace(/^['"]|['"]$/g, ''))
+      .filter(Boolean)
+  }
+  return trimmed
+    .split(',')
+    .map((tag) => tag.trim())
+    .filter(Boolean)
+}
+
+function setMetadataValue(metadata: MarkdownMetadata, key: string, value: string) {
+  if (!supportedFrontMatterFields.has(key)) return
+  const trimmed = value.trim().replace(/^['"]|['"]$/g, '')
+  if (key === 'tags') {
+    const tags = parseTagsValue(value)
+    if (tags.length > 0) metadata.tags = tags
+  } else if (trimmed) {
+    metadata[key as keyof Omit<MarkdownMetadata, 'tags'>] = trimmed
+  }
+}
+
+export function parseFrontMatter(content: string): ParsedFrontMatter {
+  const normalized = normalizeLineEndings(content)
+  const lines = normalized.split('\n')
+
+  if (lines[0]?.trim() !== '---') {
+    return {
+      metadata: {},
+      raw: '',
+      body: normalized,
+      hasFrontMatter: false,
+      bodyStartLine: 0,
+    }
+  }
+
+  for (let i = 1; i < lines.length; i++) {
+    if (lines[i].trim() !== '---') continue
+
+    const metadata: MarkdownMetadata = {}
+    let currentListKey: string | null = null
+    let isValidFrontMatter = true
+
+    for (let j = 1; j < i; j++) {
+      const line = lines[j]
+      if (line.trim() === '') continue
+
+      const listItem = line.match(/^\s*-\s+(.+?)\s*$/)
+      if (listItem && currentListKey === 'tags') {
+        if (!Array.isArray(metadata.tags)) metadata.tags = []
+        metadata.tags.push(listItem[1].trim().replace(/^['"]|['"]$/g, ''))
+        continue
+      }
+
+      const field = line.match(/^([A-Za-z][A-Za-z0-9_-]*)\s*:\s*(.*)$/)
+      if (!field) {
+        isValidFrontMatter = false
+        break
+      }
+
+      const key = field[1].trim()
+      const value = field[2] ?? ''
+      currentListKey = value.trim() === '' ? key : null
+
+      if (key === 'tags' && value.trim() === '') {
+        metadata.tags = []
+      } else {
+        setMetadataValue(metadata, key, value)
+      }
+    }
+
+    if (!isValidFrontMatter) {
+      return {
+        metadata: {},
+        raw: '',
+        body: normalized,
+        hasFrontMatter: false,
+        bodyStartLine: 0,
+      }
+    }
+
+    if (metadata.tags?.length === 0) delete metadata.tags
+
+    return {
+      metadata,
+      raw: lines.slice(0, i + 1).join('\n'),
+      body: lines.slice(i + 1).join('\n'),
+      hasFrontMatter: true,
+      bodyStartLine: i + 1,
+    }
+  }
+
+  return {
+    metadata: {},
+    raw: '',
+    body: normalized,
+    hasFrontMatter: false,
+    bodyStartLine: 0,
+  }
+}
+
+export function stripFrontMatterForRender(content: string): string {
+  return parseFrontMatter(content).body
+}
+
+export function getMarkdownMetadata(content: string): MarkdownMetadata {
+  return parseFrontMatter(content).metadata
+}
+
+function formatFrontMatterValue(value?: string): string {
+  return value?.trim() ?? ''
+}
+
+export function serializeFrontMatter(metadata: MarkdownMetadata = {}): string {
+  const lines = [
+    '---',
+    `title: ${formatFrontMatterValue(metadata.title)}`,
+    `subtitle: ${formatFrontMatterValue(metadata.subtitle)}`,
+    `author: ${formatFrontMatterValue(metadata.author)}`,
+    `date: ${formatFrontMatterValue(metadata.date)}`,
+    'tags:',
+  ]
+
+  for (const tag of metadata.tags ?? []) {
+    const trimmed = tag.trim()
+    if (trimmed) lines.push(`  - ${trimmed}`)
+  }
+
+  lines.push('---')
+  return lines.join('\n')
+}
+
+export function insertFrontMatterTemplate(content: string): string {
+  const parsed = parseFrontMatter(content)
+  if (parsed.hasFrontMatter) return normalizeLineEndings(content)
+  return `${serializeFrontMatter()}\n\n${normalizeLineEndings(content)}`
+}
+
+export function upsertFrontMatter(content: string, metadata: MarkdownMetadata): string {
+  const parsed = parseFrontMatter(content)
+  const body = parsed.hasFrontMatter ? parsed.body.replace(/^\n/, '') : normalizeLineEndings(content)
+  return `${serializeFrontMatter(metadata)}\n\n${body}`
+}
+
+export function removeFrontMatter(content: string): string {
+  const parsed = parseFrontMatter(content)
+  if (!parsed.hasFrontMatter) return normalizeLineEndings(content)
+  return parsed.body.replace(/^\n/, '')
+}
+
+export function generateTitleFromFrontMatter(content: string): string {
+  const parsed = parseFrontMatter(content)
+  const title = parsed.metadata.title?.trim()
+  if (!parsed.hasFrontMatter || !title) return normalizeLineEndings(content)
+
+  const body = parsed.body.replace(/^\n/, '')
+  const firstMeaningfulLine = body.split('\n').find((line) => line.trim() !== '')
+  if (firstMeaningfulLine && /^#\s+\S/.test(firstMeaningfulLine.trim())) {
+    return normalizeLineEndings(content)
+  }
+
+  return `${parsed.raw}\n\n# ${title}\n\n${body}`
+}
+
+export function isEmptyMarkdownHeadingLine(line: string): boolean {
+  return /^#{1,6}\s*$/.test(line.trim())
+}
+
+export function removeEmptyMarkdownHeadings(content: string): string {
+  return normalizeLineEndings(content)
+    .split('\n')
+    .filter((line) => !isEmptyMarkdownHeadingLine(line))
+    .join('\n')
+}
+
+export function normalizeMarkdownForRender(content: string): string {
+  return removeEmptyMarkdownHeadings(stripFrontMatterForRender(content))
+}
+
+export function getMarkdownHeadings(content: string): { level: number; text: string; line: number }[] {
+  const parsed = parseFrontMatter(content)
+  const lines = parsed.body.split('\n')
+  const result: { level: number; text: string; line: number }[] = []
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]
+    if (isEmptyMarkdownHeadingLine(line)) continue
+
+    const match = line.match(/^(#{1,6})\s+(.+)$/)
+    const text = match?.[2]?.trim()
+    if (!match || !text) continue
+
+    result.push({
+      level: match[1].length,
+      text,
+      line: parsed.bodyStartLine + i,
+    })
+  }
+
+  return result
+}
+
 /**
  * Render markdown to HTML (synchronous, code blocks will be highlighted async)
  */
 export function renderMarkdown(content: string): string {
-  return sanitizeHtml(md.render(content))
+  return sanitizeHtml(md.render(normalizeMarkdownForRender(content)))
 }
 
 /**

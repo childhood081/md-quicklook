@@ -1,7 +1,7 @@
 export default {
   // ── App / Global ──
   app: {
-    name: 'md-quicklook',
+    name: 'AI 文档快看',
   },
 
   // ── Modes ──
@@ -37,8 +37,8 @@ export default {
 
   // ── Welcome page ──
   welcome: {
-    eyebrow: 'Markdown 工作区',
-    tagline: '轻量级 Markdown 文件查看与编辑器，支持阅读、源码编辑、自动保存与导出。',
+    eyebrow: 'AI 文档查看',
+    tagline: 'AI 产出的 Markdown 文档查看与导出工具。支持阅读、轻量编辑、源码模式，可导出 Word 与 Excel。',
     dragDrop: '拖拽 .md 文件到这里',
     dragDropActive: '松开以打开',
     supportNote: '支持 .md 和 .markdown 文件。',
@@ -115,6 +115,46 @@ export default {
     tableTitle: '插入 3x3 表格',
   },
 
+  // ── Edit menu actions ──
+  edit: {
+    find: '查找',
+    undo: '撤销',
+    redo: '重做',
+    unsupportedMode: '当前模式不支持此操作',
+    findUnsupported: '当前模式暂不支持查找',
+    findPrompt: '查找',
+    findNoMatch: '未找到匹配内容',
+  },
+
+  // ── View menu actions ──
+  view: {
+    zoomIn: '放大',
+    zoomOut: '缩小',
+    actualSize: '实际大小',
+    fullScreen: '全屏',
+  },
+
+  // ── Front Matter operations ──
+  frontMatter: {
+    insert: '插入 Front Matter',
+    edit: '编辑 Front Matter',
+    clear: '清空 Front Matter',
+    generateTitle: '从 Front Matter 生成标题',
+    inserted: '已插入 Front Matter',
+    updated: '已更新 Front Matter',
+    cleared: '已清空 Front Matter',
+    notFound: '未找到 Front Matter',
+    alreadyExists: '当前文档已有 Front Matter',
+    confirmClear: '确定清空文档开头的 Front Matter？',
+    titleGenerated: '已从 Front Matter 生成标题',
+    cannotGenerateTitle: '无法生成标题：未找到 Front Matter 标题，或正文已有有效 H1',
+    promptTitle: 'Front Matter title',
+    promptSubtitle: 'Front Matter subtitle',
+    promptAuthor: 'Front Matter author',
+    promptDate: 'Front Matter date',
+    promptTags: 'Front Matter tags（用逗号分隔）',
+  },
+
   // ── Errors / warnings ──
   error: {
     openFileFailed: '打开文件失败',
@@ -138,7 +178,7 @@ export default {
     testing: '测试清单',
     about: '关于',
     version: '版本',
-    guideText: '通过菜单或工具栏来打开、编辑和导出 Markdown 文件。',
+    guideText: '通过菜单或工具栏打开 AI 生成的 Markdown 文档，查看、编辑和导出为 Word / Excel。',
     testingText: '测试项：验证打开/保存/导出/模式切换/语言切换功能。',
   },
 

@@ -24,6 +24,19 @@ pub const MENU_FILE_SAVE_AS: &str = "file.save_as";
 pub const MENU_FILE_EXPORT_WORD: &str = "file.export_word";
 pub const MENU_FILE_EXPORT_EXCEL: &str = "file.export_excel";
 
+pub const MENU_EDIT_UNDO: &str = "edit.undo";
+pub const MENU_EDIT_REDO: &str = "edit.redo";
+pub const MENU_EDIT_CUT: &str = "edit.cut";
+pub const MENU_EDIT_COPY: &str = "edit.copy";
+pub const MENU_EDIT_PASTE: &str = "edit.paste";
+pub const MENU_EDIT_SELECT_ALL: &str = "edit.select_all";
+pub const MENU_EDIT_FIND: &str = "edit.find";
+pub const MENU_EDIT_INSERT_FRONT_MATTER: &str = "edit.insert_front_matter";
+pub const MENU_EDIT_EDIT_FRONT_MATTER: &str = "edit.edit_front_matter";
+pub const MENU_EDIT_CLEAR_FRONT_MATTER: &str = "edit.clear_front_matter";
+pub const MENU_EDIT_GENERATE_TITLE_FROM_FRONT_MATTER: &str =
+    "edit.generate_title_from_front_matter";
+
 pub const MENU_VIEW_READING: &str = "view.reading";
 pub const MENU_VIEW_EDITING: &str = "view.editing";
 pub const MENU_VIEW_SOURCE: &str = "view.source";
@@ -31,6 +44,7 @@ pub const MENU_VIEW_OUTLINE: &str = "view.outline";
 pub const MENU_VIEW_ZOOM_IN: &str = "view.zoom_in";
 pub const MENU_VIEW_ZOOM_OUT: &str = "view.zoom_out";
 pub const MENU_VIEW_ACTUAL_SIZE: &str = "view.actual_size";
+pub const MENU_VIEW_FULLSCREEN: &str = "view.fullscreen";
 
 pub const MENU_LANG_ZH_CN: &str = "lang.zh_cn";
 pub const MENU_LANG_EN_US: &str = "lang.en_us";
@@ -117,17 +131,17 @@ pub fn build_menu<R: Runtime>(
 fn build_menu_zh<R: Runtime>(app_handle: &AppHandle<R>) -> tauri::Result<tauri::menu::Menu<R>> {
     let about_meta = || {
         AboutMetadataBuilder::new()
-            .name(Some(String::from("md-quicklook")))
+            .name(Some(String::from("AI 文档快看")))
             .version(Some(String::from("1.9.0")))
-            .authors(Some(vec![String::from("md-quicklook contributors")]))
+            .authors(Some(vec![String::from("AI 文档快看 contributors")]))
             .website(Some(String::from("https://github.com")))
             .build()
     };
 
     // ── App submenu ──
     let app_submenu_builder =
-        SubmenuBuilder::with_id(app_handle, APP_SUBMENU_ID, "md-quicklook").item(
-            &PredefinedMenuItem::about(app_handle, Some("关于 md-quicklook"), Some(about_meta()))?,
+        SubmenuBuilder::with_id(app_handle, APP_SUBMENU_ID, "AI 文档快看").item(
+            &PredefinedMenuItem::about(app_handle, Some("关于 AI 文档快看"), Some(about_meta()))?,
         );
     #[cfg(target_os = "macos")]
     let app_submenu_builder = app_submenu_builder
@@ -136,7 +150,7 @@ fn build_menu_zh<R: Runtime>(app_handle: &AppHandle<R>) -> tauri::Result<tauri::
         .separator()
         .item(&PredefinedMenuItem::hide(
             app_handle,
-            Some("隐藏 md-quicklook"),
+            Some("隐藏 AI 文档快看"),
         )?)
         .item(&PredefinedMenuItem::hide_others(
             app_handle,
@@ -147,7 +161,7 @@ fn build_menu_zh<R: Runtime>(app_handle: &AppHandle<R>) -> tauri::Result<tauri::
         .separator()
         .item(&PredefinedMenuItem::quit(
             app_handle,
-            Some("退出 md-quicklook"),
+            Some("退出 AI 文档快看"),
         )?)
         .build()?;
 
@@ -181,18 +195,62 @@ fn build_menu_zh<R: Runtime>(app_handle: &AppHandle<R>) -> tauri::Result<tauri::
 
     // ── Edit submenu ──
     let edit_submenu = SubmenuBuilder::with_id(app_handle, EDIT_SUBMENU_ID, "编辑")
-        .item(&PredefinedMenuItem::undo(app_handle, Some("撤销"))?)
-        .item(&PredefinedMenuItem::redo(app_handle, Some("重做"))?)
-        .separator()
-        .item(&PredefinedMenuItem::cut(app_handle, Some("剪切"))?)
-        .item(&PredefinedMenuItem::copy(app_handle, Some("复制"))?)
-        .item(&PredefinedMenuItem::paste(app_handle, Some("粘贴"))?)
-        .item(&PredefinedMenuItem::select_all(app_handle, Some("全选"))?)
+        .item(
+            &MenuItemBuilder::with_id(MENU_EDIT_UNDO, "撤销")
+                .accelerator("CmdOrCtrl+Z")
+                .build(app_handle)?,
+        )
+        .item(
+            &MenuItemBuilder::with_id(MENU_EDIT_REDO, "重做")
+                .accelerator("CmdOrCtrl+Y")
+                .build(app_handle)?,
+        )
         .separator()
         .item(
-            &MenuItemBuilder::with_id("edit.find", "查找...")
+            &MenuItemBuilder::with_id(MENU_EDIT_CUT, "剪切")
+                .accelerator("CmdOrCtrl+X")
+                .build(app_handle)?,
+        )
+        .item(
+            &MenuItemBuilder::with_id(MENU_EDIT_COPY, "复制")
+                .accelerator("CmdOrCtrl+C")
+                .build(app_handle)?,
+        )
+        .item(
+            &MenuItemBuilder::with_id(MENU_EDIT_PASTE, "粘贴")
+                .accelerator("CmdOrCtrl+V")
+                .build(app_handle)?,
+        )
+        .item(
+            &MenuItemBuilder::with_id(MENU_EDIT_SELECT_ALL, "全选")
+                .accelerator("CmdOrCtrl+A")
+                .build(app_handle)?,
+        )
+        .separator()
+        .item(
+            &MenuItemBuilder::with_id(MENU_EDIT_FIND, "查找...")
                 .accelerator("CmdOrCtrl+F")
                 .build(app_handle)?,
+        )
+        .separator()
+        .item(
+            &MenuItemBuilder::with_id(MENU_EDIT_INSERT_FRONT_MATTER, "插入 Front Matter")
+                .build(app_handle)?,
+        )
+        .item(
+            &MenuItemBuilder::with_id(MENU_EDIT_EDIT_FRONT_MATTER, "编辑 Front Matter")
+                .build(app_handle)?,
+        )
+        .item(
+            &MenuItemBuilder::with_id(MENU_EDIT_CLEAR_FRONT_MATTER, "清空 Front Matter")
+                .build(app_handle)?,
+        )
+        .item(
+            &MenuItemBuilder::with_id(
+                MENU_EDIT_GENERATE_TITLE_FROM_FRONT_MATTER,
+                "从 Front Matter 生成标题",
+            )
+            .build(app_handle)?,
         )
         .build()?;
 
@@ -236,7 +294,11 @@ fn build_menu_zh<R: Runtime>(app_handle: &AppHandle<R>) -> tauri::Result<tauri::
                 .build(app_handle)?,
         )
         .separator()
-        .item(&PredefinedMenuItem::fullscreen(app_handle, Some("全屏"))?)
+        .item(
+            &MenuItemBuilder::with_id(MENU_VIEW_FULLSCREEN, "全屏")
+                .accelerator("F11")
+                .build(app_handle)?,
+        )
         .build()?;
 
     // ── Language submenu (zh-CN active) ──
@@ -346,21 +408,62 @@ fn build_menu_en<R: Runtime>(app_handle: &AppHandle<R>) -> tauri::Result<tauri::
 
     // ── Edit submenu ──
     let edit_submenu = SubmenuBuilder::with_id(app_handle, EDIT_SUBMENU_ID, "Edit")
-        .item(&PredefinedMenuItem::undo(app_handle, Some("Undo"))?)
-        .item(&PredefinedMenuItem::redo(app_handle, Some("Redo"))?)
-        .separator()
-        .item(&PredefinedMenuItem::cut(app_handle, Some("Cut"))?)
-        .item(&PredefinedMenuItem::copy(app_handle, Some("Copy"))?)
-        .item(&PredefinedMenuItem::paste(app_handle, Some("Paste"))?)
-        .item(&PredefinedMenuItem::select_all(
-            app_handle,
-            Some("Select All"),
-        )?)
+        .item(
+            &MenuItemBuilder::with_id(MENU_EDIT_UNDO, "Undo")
+                .accelerator("CmdOrCtrl+Z")
+                .build(app_handle)?,
+        )
+        .item(
+            &MenuItemBuilder::with_id(MENU_EDIT_REDO, "Redo")
+                .accelerator("CmdOrCtrl+Y")
+                .build(app_handle)?,
+        )
         .separator()
         .item(
-            &MenuItemBuilder::with_id("edit.find", "Find...")
+            &MenuItemBuilder::with_id(MENU_EDIT_CUT, "Cut")
+                .accelerator("CmdOrCtrl+X")
+                .build(app_handle)?,
+        )
+        .item(
+            &MenuItemBuilder::with_id(MENU_EDIT_COPY, "Copy")
+                .accelerator("CmdOrCtrl+C")
+                .build(app_handle)?,
+        )
+        .item(
+            &MenuItemBuilder::with_id(MENU_EDIT_PASTE, "Paste")
+                .accelerator("CmdOrCtrl+V")
+                .build(app_handle)?,
+        )
+        .item(
+            &MenuItemBuilder::with_id(MENU_EDIT_SELECT_ALL, "Select All")
+                .accelerator("CmdOrCtrl+A")
+                .build(app_handle)?,
+        )
+        .separator()
+        .item(
+            &MenuItemBuilder::with_id(MENU_EDIT_FIND, "Find...")
                 .accelerator("CmdOrCtrl+F")
                 .build(app_handle)?,
+        )
+        .separator()
+        .item(
+            &MenuItemBuilder::with_id(MENU_EDIT_INSERT_FRONT_MATTER, "Insert Front Matter")
+                .build(app_handle)?,
+        )
+        .item(
+            &MenuItemBuilder::with_id(MENU_EDIT_EDIT_FRONT_MATTER, "Edit Front Matter")
+                .build(app_handle)?,
+        )
+        .item(
+            &MenuItemBuilder::with_id(MENU_EDIT_CLEAR_FRONT_MATTER, "Clear Front Matter")
+                .build(app_handle)?,
+        )
+        .item(
+            &MenuItemBuilder::with_id(
+                MENU_EDIT_GENERATE_TITLE_FROM_FRONT_MATTER,
+                "Generate Title from Front Matter",
+            )
+            .build(app_handle)?,
         )
         .build()?;
 
@@ -404,10 +507,11 @@ fn build_menu_en<R: Runtime>(app_handle: &AppHandle<R>) -> tauri::Result<tauri::
                 .build(app_handle)?,
         )
         .separator()
-        .item(&PredefinedMenuItem::fullscreen(
-            app_handle,
-            Some("Full Screen"),
-        )?)
+        .item(
+            &MenuItemBuilder::with_id(MENU_VIEW_FULLSCREEN, "Full Screen")
+                .accelerator("F11")
+                .build(app_handle)?,
+        )
         .build()?;
 
     // ── Language submenu (English active) ──

@@ -2,19 +2,54 @@
 import { defineComponent, h, onUnmounted, shallowRef, ref, watch } from 'vue'
 import { Milkdown, MilkdownProvider, useEditor } from '@milkdown/vue'
 import type { UseEditorReturn } from '@milkdown/vue'
-import { Editor, rootCtx, defaultValueCtx } from '@milkdown/kit/core'
+import { Editor, rootCtx, defaultValueCtx, editorViewCtx } from '@milkdown/kit/core'
 import { commonmark } from '@milkdown/kit/preset/commonmark'
 import { gfm } from '@milkdown/kit/preset/gfm'
-import { history } from '@milkdown/kit/plugin/history'
+import { history, redoCommand, undoCommand } from '@milkdown/kit/plugin/history'
 import { listener, listenerCtx } from '@milkdown/kit/plugin/listener'
 import { useEditorStore } from '../stores/editor'
 import { callCommand, replaceAll } from '@milkdown/utils'
+import { registerEditorCommandHandler, type EditorCommand } from '../utils/editorCommands'
 
 const store = useEditorStore()
 
 // Tracks the last markdown synced FROM the editor, to avoid echo loops
 const lastEditorContent = ref(store.currentContent)
 const activeEditor = shallowRef<UseEditorReturn | null>(null)
+let unregisterCommandHandler: (() => void) | null = null
+
+function execBrowserEditCommand(command: 'cut' | 'copy' | 'paste' | 'selectAll'): boolean {
+  activeEditor.value?.get()?.action((ctx) => {
+    ctx.get(editorViewCtx).focus()
+  })
+
+  try {
+    return document.execCommand(command === 'selectAll' ? 'selectAll' : command)
+  } catch {
+    return false
+  }
+}
+
+function handleEditorCommand(command: EditorCommand): boolean {
+  const editor = activeEditor.value?.get()
+  if (!editor) return false
+
+  switch (command) {
+    case 'undo':
+      editor.action(callCommand(undoCommand.key))
+      return true
+    case 'redo':
+      editor.action(callCommand(redoCommand.key))
+      return true
+    case 'cut':
+    case 'copy':
+    case 'paste':
+    case 'selectAll':
+      return execBrowserEditCommand(command)
+    case 'find':
+      return false
+  }
+}
 
 const MilkdownEditor = defineComponent({
   name: 'MilkdownEditor',
@@ -36,6 +71,7 @@ const MilkdownEditor = defineComponent({
     })
 
     activeEditor.value = editorRef
+    unregisterCommandHandler = registerEditorCommandHandler(handleEditorCommand)
 
     // Sync store → editor when content changes externally (file load, mode switch from source)
     watch(
@@ -50,6 +86,7 @@ const MilkdownEditor = defineComponent({
       })
 
     onUnmounted(() => {
+      unregisterCommandHandler?.()
       if (activeEditor.value === editorRef) {
         activeEditor.value = null
       }

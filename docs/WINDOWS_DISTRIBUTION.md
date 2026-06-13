@@ -91,9 +91,10 @@ NSIS 安装程序会自动注册以下文件关联：
 ### 安装后双击 .md 行为
 
 1. **未运行时**：双击 .md 启动 md-quicklook 并打开该文件
-2. **已运行时**：双击 .md 将文件路径传递给已运行的实例（通过 Tauri 的 `RunEvent::Opened`）
+2. **已运行时**：双击 .md 通常会启动新实例并通过 CLI args 传入文件路径。
 
-> 注意：`RunEvent::Opened` 事件处理在 `src-tauri/src/lib.rs` 中已实现。
+> 注意：Tauri 2 中不使用旧运行时打开事件处理 Windows 文件关联；当前实现依赖
+> `src-tauri/src/lib.rs` 中的 `find_markdown_file_in_args()`。
 
 ### 多实例限制
 

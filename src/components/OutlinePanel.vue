@@ -1,23 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useEditorStore } from '../stores/editor'
+import { getMarkdownHeadings } from '../utils/markdown'
 
 const store = useEditorStore()
-const headings = computed(() => {
-  const lines = store.currentContent.split('\n')
-  const result: { level: number; text: string; line: number }[] = []
-  for (let i = 0; i < lines.length; i++) {
-    const match = lines[i].match(/^(#{1,6})\s+(.+)/)
-    if (match) {
-      result.push({
-        level: match[1].length,
-        text: match[2].trim(),
-        line: i,
-      })
-    }
-  }
-  return result
-})
+const headings = computed(() => getMarkdownHeadings(store.currentContent))
 
 function scrollToLine(line: number) {
   // Find all heading elements in the reader and scroll to the matching one

@@ -3,16 +3,48 @@ import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { EditorView, keymap, placeholder } from '@codemirror/view'
 import { Compartment, EditorState } from '@codemirror/state'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
-import { defaultKeymap } from '@codemirror/commands'
+import { defaultKeymap, redo, selectAll, undo } from '@codemirror/commands'
+import { openSearchPanel, search, searchKeymap } from '@codemirror/search'
 import { oneDark } from '@codemirror/theme-one-dark'
 import { useEditorStore } from '../stores/editor'
 import { i18n } from '../i18n'
+import { registerEditorCommandHandler, type EditorCommand } from '../utils/editorCommands'
 
 const store = useEditorStore()
 const containerRef = ref<HTMLDivElement>()
 let view: EditorView | null = null
 let syncFromStore = false
+let unregisterCommandHandler: (() => void) | null = null
 const placeholderCompartment = new Compartment()
+
+function execBrowserEditCommand(command: 'cut' | 'copy' | 'paste'): boolean {
+  view?.focus()
+  try {
+    return document.execCommand(command)
+  } catch {
+    return false
+  }
+}
+
+function handleEditorCommand(command: EditorCommand): boolean {
+  if (!view) return false
+
+  switch (command) {
+    case 'undo':
+      return undo(view)
+    case 'redo':
+      return redo(view)
+    case 'selectAll':
+      return selectAll(view)
+    case 'find':
+      view.focus()
+      return openSearchPanel(view)
+    case 'cut':
+    case 'copy':
+    case 'paste':
+      return execBrowserEditCommand(command)
+  }
+}
 
 function createEditor() {
   if (!containerRef.value) return
@@ -20,8 +52,9 @@ function createEditor() {
   const extensions = [
     markdown({ base: markdownLanguage }),
     oneDark,
+    search(),
     placeholderCompartment.of(placeholder(i18n.global.t('source.placeholder'))),
-    keymap.of(defaultKeymap),
+    keymap.of([...searchKeymap, ...defaultKeymap]),
     EditorView.updateListener.of((update) => {
       if (update.docChanged && !syncFromStore) {
         store.setContent(update.state.doc.toString())
@@ -42,6 +75,8 @@ function createEditor() {
     state,
     parent: containerRef.value,
   })
+
+  unregisterCommandHandler = registerEditorCommandHandler(handleEditorCommand)
 }
 
 // Watch for external content changes (e.g. when file is loaded)
@@ -70,6 +105,7 @@ watch(() => i18n.global.locale.value, () => {
 onMounted(createEditor)
 
 onUnmounted(() => {
+  unregisterCommandHandler?.()
   view?.destroy()
 })
 </script>

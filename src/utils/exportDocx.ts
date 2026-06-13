@@ -17,6 +17,7 @@ import {
 } from 'docx'
 import type { IParagraphOptions, IRunOptions } from 'docx'
 import type { IFontAttributesProperties } from 'docx'
+import { normalizeMarkdownForRender } from './markdown'
 
 type MarkdownToken = ReturnType<MarkdownIt['parse']>[number]
 type InlineChild = NonNullable<MarkdownToken['children']>[number]
@@ -274,7 +275,7 @@ function collectListItemInline(tokens: MarkdownToken[], startIndex: number): { i
 }
 
 function createDocumentChildren(markdown: string): DocxChild[] {
-  const tokens = md.parse(markdown, {})
+  const tokens = md.parse(normalizeMarkdownForRender(markdown), {})
   const children: DocxChild[] = []
 
   for (let i = 0; i < tokens.length; i++) {

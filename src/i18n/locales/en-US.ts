@@ -37,8 +37,8 @@ export default {
 
   // ── Welcome page ──
   welcome: {
-    eyebrow: 'Markdown Workspace',
-    tagline: 'Lightweight Markdown file viewer and editor with reading, source editing, autosave, and exports.',
+    eyebrow: 'AI Document Viewer',
+    tagline: 'View and export AI-generated Markdown documents. Read, light-edit, view source, and export to Word & Excel — all locally, fully offline.',
     dragDrop: 'Drag and drop .md here',
     dragDropActive: 'Drop to open',
     supportNote: 'Supports .md and .markdown documents.',
@@ -115,6 +115,46 @@ export default {
     tableTitle: 'Insert 3x3 Table',
   },
 
+  // ── Edit menu actions ──
+  edit: {
+    find: 'Find',
+    undo: 'Undo',
+    redo: 'Redo',
+    unsupportedMode: 'This action is not supported in the current mode',
+    findUnsupported: 'Find is not supported in the current mode',
+    findPrompt: 'Find',
+    findNoMatch: 'No matches found',
+  },
+
+  // ── View menu actions ──
+  view: {
+    zoomIn: 'Zoom In',
+    zoomOut: 'Zoom Out',
+    actualSize: 'Actual Size',
+    fullScreen: 'Full Screen',
+  },
+
+  // ── Front Matter operations ──
+  frontMatter: {
+    insert: 'Insert Front Matter',
+    edit: 'Edit Front Matter',
+    clear: 'Clear Front Matter',
+    generateTitle: 'Generate Title from Front Matter',
+    inserted: 'Front Matter inserted',
+    updated: 'Front Matter updated',
+    cleared: 'Front Matter cleared',
+    notFound: 'Front Matter not found',
+    alreadyExists: 'The current document already has Front Matter',
+    confirmClear: 'Clear the Front Matter at the start of this document?',
+    titleGenerated: 'Title generated from Front Matter',
+    cannotGenerateTitle: 'Cannot generate title: no Front Matter title was found, or the body already has a valid H1',
+    promptTitle: 'Front Matter title',
+    promptSubtitle: 'Front Matter subtitle',
+    promptAuthor: 'Front Matter author',
+    promptDate: 'Front Matter date',
+    promptTags: 'Front Matter tags (comma-separated)',
+  },
+
   // ── Errors / warnings ──
   error: {
     openFileFailed: 'Failed to open file',
@@ -138,7 +178,7 @@ export default {
     testing: 'Testing Checklist',
     about: 'About',
     version: 'Version',
-    guideText: 'Use the menu or toolbar to open, edit, and export Markdown files.',
+    guideText: 'Open AI-generated Markdown documents via menu or toolbar to view, edit, and export to Word / Excel.',
     testingText: 'Testing: Verify open/save/export/mode-switch/language-switch.',
   },
 

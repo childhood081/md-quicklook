@@ -24,7 +24,7 @@ This is configured in `src-tauri/tauri.conf.json` under `bundle.fileAssociations
 | Scenario | Mechanism | Code Location |
 |---|---|---|
 | App not running → double-click `.md` | File path passed as CLI arg | `lib.rs` → `find_markdown_file_in_args()` |
-| App already running → double-click another `.md` | macOS sends `application:openFile:` → Tauri emits `RunEvent::Opened { urls }` | `lib.rs` → `run()` event loop |
+| App already running → double-click another `.md` | Platform-dependent behavior; should use a Tauri 2 compatible AppHandle event/plugin path if expanded | No runtime file-open handler currently installed |
 
 **Setting as default opener manually:**
 

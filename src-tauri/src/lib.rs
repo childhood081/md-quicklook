@@ -311,6 +311,11 @@ pub fn run() {
 
             let handle = app.handle().clone();
 
+            if let Some(main_window) = handle.get_webview_window("main") {
+                main_window.show()?;
+                main_window.set_focus()?;
+            }
+
             // Load config and build the initial menu
             let config = menu::load_config(&handle);
             let language = config.language;
@@ -364,6 +369,17 @@ pub fn run() {
                     | menu::MENU_FILE_SAVE_AS
                     | menu::MENU_FILE_EXPORT_WORD
                     | menu::MENU_FILE_EXPORT_EXCEL
+                    | menu::MENU_EDIT_UNDO
+                    | menu::MENU_EDIT_REDO
+                    | menu::MENU_EDIT_CUT
+                    | menu::MENU_EDIT_COPY
+                    | menu::MENU_EDIT_PASTE
+                    | menu::MENU_EDIT_SELECT_ALL
+                    | menu::MENU_EDIT_FIND
+                    | menu::MENU_EDIT_INSERT_FRONT_MATTER
+                    | menu::MENU_EDIT_EDIT_FRONT_MATTER
+                    | menu::MENU_EDIT_CLEAR_FRONT_MATTER
+                    | menu::MENU_EDIT_GENERATE_TITLE_FROM_FRONT_MATTER
                     | menu::MENU_VIEW_READING
                     | menu::MENU_VIEW_EDITING
                     | menu::MENU_VIEW_SOURCE
@@ -371,14 +387,10 @@ pub fn run() {
                     | menu::MENU_VIEW_ZOOM_IN
                     | menu::MENU_VIEW_ZOOM_OUT
                     | menu::MENU_VIEW_ACTUAL_SIZE
+                    | menu::MENU_VIEW_FULLSCREEN
                     | menu::MENU_HELP_GUIDE
                     | menu::MENU_HELP_TESTING => {
                         let _ = app_handle.emit("menu-action", id);
-                    }
-
-                    // Find action
-                    "edit.find" => {
-                        let _ = app_handle.emit("menu-action", "edit.find");
                     }
 
                     _ => {

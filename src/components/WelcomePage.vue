@@ -108,8 +108,8 @@ defineExpose({ addRecentFile })
       <div class="grid gap-10 md:grid-cols-[1fr_270px]">
         <section class="min-w-0">
           <div class="swiss-eyebrow mb-7">{{ $t('welcome.eyebrow') }}</div>
-          <h1 class="max-w-3xl text-[44px] leading-none font-black uppercase md:text-[58px]" style="color: var(--ink);">
-            md-quicklook
+          <h1 class="max-w-3xl text-[44px] leading-none font-black md:text-[58px]" style="color: var(--ink);">
+            {{ $t('app.name') }}
           </h1>
           <p class="mt-5 max-w-xl text-[15px] leading-7" style="color: var(--muted);">
             {{ $t('welcome.tagline') }}

@@ -157,11 +157,13 @@ export ENTITLEMENTS_PATH
 
 node <<'NODE'
 const fs = require('fs')
+const path = require('path')
 const configPath = process.env.CONFIG_PATH
 const entitlementsPath = process.env.ENTITLEMENTS_PATH
 const teamId = process.env.APPLE_TEAM_ID
 const bundleId = process.env.APPSTORE_BUNDLE_IDENTIFIER
 const appIdentifier = `${teamId}.${bundleId}`
+const baseConfigPath = path.join(path.dirname(configPath), 'tauri.conf.json')
 
 const entitlements = `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -184,22 +186,40 @@ const entitlements = `<?xml version="1.0" encoding="UTF-8"?>
 `
 fs.writeFileSync(entitlementsPath, entitlements)
 
-const config = {
-  identifier: process.env.APPSTORE_BUNDLE_IDENTIFIER,
-  version: process.env.APPSTORE_MARKETING_VERSION,
-  bundle: {
-    category: 'Productivity',
-    macOS: {
-      bundleVersion: process.env.APPSTORE_BUILD_NUMBER,
-      signingIdentity: process.env.APPLE_SIGNING_IDENTITY,
-      entitlements: './entitlements/app-store.generated.plist',
-      infoPlist: './Info.plist',
-      files: {
-        'embedded.provisionprofile': process.env.APPSTORE_PROVISION_PROFILE,
-      },
+const config = JSON.parse(fs.readFileSync(baseConfigPath, 'utf8'))
+
+config.identifier = process.env.APPSTORE_BUNDLE_IDENTIFIER
+config.version = process.env.APPSTORE_MARKETING_VERSION
+
+config.build = {
+  ...(config.build ?? {}),
+  frontendDist: '../dist',
+}
+
+config.app = {
+  ...(config.app ?? {}),
+  security: {
+    ...(config.app?.security ?? {}),
+    csp: "default-src 'self'; connect-src 'self' ipc: http://ipc.localhost; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:",
+  },
+}
+
+config.bundle = {
+  ...(config.bundle ?? {}),
+  category: 'Productivity',
+  macOS: {
+    ...(config.bundle?.macOS ?? {}),
+    bundleVersion: process.env.APPSTORE_BUILD_NUMBER,
+    signingIdentity: process.env.APPLE_SIGNING_IDENTITY,
+    entitlements: './entitlements/app-store.generated.plist',
+    infoPlist: './Info.plist',
+    files: {
+      ...(config.bundle?.macOS?.files ?? {}),
+      'embedded.provisionprofile': process.env.APPSTORE_PROVISION_PROFILE,
     },
   },
 }
+
 fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
 NODE
 

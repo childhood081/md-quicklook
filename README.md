@@ -1,8 +1,8 @@
-# md-quicklook
+# md-quicklook / AI 文档快看
 
-A lightweight, desktop-native Markdown file viewer and source editor built with **Tauri 2 + Vue 3 + TypeScript**.
+AI 文档快看是一个轻量、离线、原生桌面的文档查看与导出工具，专为 AI 生成的 Markdown 文档优化。基于 **Tauri 2 + Vue 3 + TypeScript** 构建。
 
-Open any `.md` or `.markdown` file — locally, offline, and fast. Designed to be your system's default Markdown opener.
+打开任何 `.md` 或 `.markdown` 文件 — 完全离线，无需账号。设计为 AI 产出的 Markdown 文档首选查看和导出工具。
 
 ## Release Status
 
@@ -11,7 +11,7 @@ Current package status: **v1.9.0 beta**.
 - macOS Apple Silicon `.app` and beta `.dmg` can be built locally.
 - The current macOS beta `.dmg` is **unsigned and not notarized**.
 - Windows packaging configuration exists, but the Windows installer has **not been verified on a real Windows machine**.
-- md-quicklook is **not listed on the Mac App Store**.
+- md-quicklook / AI 文档快看 is **not listed on the Mac App Store**.
 - Treat current packages as small-scope beta test builds, not a final public release.
 
 ## Features
@@ -150,7 +150,7 @@ md-quicklook path/to/file.md
 - Windows installer has not yet been verified on a real Windows machine
 - App Store distribution is not configured
 - **Single file** at a time — no tab support yet
-- File association only works when the app is launched (already-running app file-open events are handled on macOS via `RunEvent::Opened`)
+- File association opens files through startup CLI args. Already-running app file-forwarding is platform dependent and should use a Tauri 2 compatible event/plugin path if expanded later.
 - **No dark mode** for the reader view yet
 - **Drag-drop** requires the app to be built with Tauri (not in plain browser)
 

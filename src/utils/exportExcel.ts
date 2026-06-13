@@ -1,5 +1,6 @@
 import type * as XLSXType from 'xlsx'
 import { i18n } from '../i18n'
+import { normalizeMarkdownForRender } from './markdown'
 
 type XlsxModule = typeof import('xlsx')
 
@@ -86,7 +87,7 @@ function extractPrecedingHeading(lines: string[], tableStartIndex: number): stri
 }
 
 export function parseMarkdownTables(markdown: string): MarkdownTable[] {
-  const lines = markdown.replace(/\r\n?/g, '\n').split('\n')
+  const lines = normalizeMarkdownForRender(markdown).replace(/\r\n?/g, '\n').split('\n')
   const tables: MarkdownTable[] = []
 
   for (let i = 0; i < lines.length - 1; i++) {
