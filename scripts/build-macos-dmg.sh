@@ -2,7 +2,7 @@
 
 set -u
 
-APP_NAME="md-quicklook"
+APP_NAME="AI 文档快看"
 VERSION="1.9.0"
 ARCH="aarch64"
 

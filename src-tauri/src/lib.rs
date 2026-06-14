@@ -369,6 +369,7 @@ pub fn run() {
                     | menu::MENU_FILE_SAVE_AS
                     | menu::MENU_FILE_EXPORT_WORD
                     | menu::MENU_FILE_EXPORT_EXCEL
+                    | menu::MENU_FILE_CLOSE_DOCUMENT
                     | menu::MENU_EDIT_UNDO
                     | menu::MENU_EDIT_REDO
                     | menu::MENU_EDIT_CUT
@@ -428,11 +429,17 @@ pub fn run() {
             #[cfg(target_os = "macos")]
             if let tauri::RunEvent::Opened { urls } = event {
                 for url in &urls {
-                    let path = url
+                    let path_buf = url
                         .to_file_path()
-                        .unwrap_or_else(|_| std::path::PathBuf::from(url.as_str()))
-                        .to_string_lossy()
-                        .to_string();
+                        .unwrap_or_else(|_| std::path::PathBuf::from(url.as_str()));
+                    if ensure_markdown_path(&path_buf).is_err() {
+                        continue;
+                    }
+                    let path = canonical_display_path(&path_buf.to_string_lossy());
+                    if let Ok(mut initial_file) = app_handle.state::<AppState>().initial_file.lock()
+                    {
+                        *initial_file = Some(path.clone());
+                    }
                     let _ = app_handle.emit("open-file", path);
                 }
             }

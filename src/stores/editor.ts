@@ -181,6 +181,24 @@ export const useEditorStore = defineStore('editor', () => {
     mode.value = m
   }
 
+  async function closeFile() {
+    if (filePath.value && isModified.value) {
+      await manualSave()
+    }
+
+    if (autoSaveTimer) {
+      clearTimeout(autoSaveTimer)
+      autoSaveTimer = null
+    }
+
+    filePath.value = ''
+    originalContent.value = ''
+    currentContent.value = ''
+    mode.value = 'reading'
+    zoomLevel.value = 1
+    setStatus('idle')
+  }
+
   function zoomIn() {
     zoomLevel.value = Math.min(2, Math.round((zoomLevel.value + 0.1) * 10) / 10)
   }
@@ -303,7 +321,7 @@ export const useEditorStore = defineStore('editor', () => {
   return {
     filePath, fileName, originalContent, currentContent,
     mode, zoomLevel, saveStatus, lastError, isModified,
-    loadFile, saveFile, manualSave, setContent, setMode,
+    loadFile, saveFile, manualSave, closeFile, setContent, setMode,
     zoomIn, zoomOut, resetZoom,
     insertFrontMatter, getFrontMatter, updateFrontMatter, clearFrontMatter, generateTitleFromMetadata,
     exportTablesToExcel, exportToWord,

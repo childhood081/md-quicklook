@@ -2,12 +2,13 @@
 
 set -u
 
-APP_NAME="md-quicklook"
+APP_NAME="AI 文档快看"
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SRC_TAURI_DIR="${ROOT_DIR}/src-tauri"
 CONFIG_PATH="${SRC_TAURI_DIR}/tauri.appstore.generated.conf.json"
 ENTITLEMENTS_PATH="${SRC_TAURI_DIR}/entitlements/app-store.generated.plist"
 PKG_DIR="${SRC_TAURI_DIR}/target/appstore/pkg"
+STAGING_DIR="${SRC_TAURI_DIR}/target/appstore/staging"
 
 log() {
   printf '[build-mac-app-store] %s\n' "$1"
@@ -92,7 +93,7 @@ if ! security find-identity -v | grep -F "${MAC_INSTALLER_SIGNING_IDENTITY}" >/d
   fail "Mac installer signing identity not found in keychain: ${MAC_INSTALLER_SIGNING_IDENTITY}"
 fi
 
-PROFILE_PLIST="$(mktemp /tmp/md-quicklook-profile.XXXXXX.plist)"
+PROFILE_PLIST="$(mktemp /tmp/ai-doc-quicklook-profile.XXXXXX.plist)"
 security cms -D -i "${APPSTORE_PROVISION_PROFILE}" > "${PROFILE_PLIST}" 2>/dev/null || fail "Cannot decode provisioning profile"
 PROFILE_APP_ID="$(/usr/libexec/PlistBuddy -c 'Print :Entitlements:com.apple.application-identifier' "${PROFILE_PLIST}" 2>/dev/null || true)"
 PROFILE_TEAM_ID="$(/usr/libexec/PlistBuddy -c 'Print :TeamIdentifier:0' "${PROFILE_PLIST}" 2>/dev/null || true)"
@@ -181,6 +182,8 @@ const entitlements = `<?xml version="1.0" encoding="UTF-8"?>
   <true/>
   <key>com.apple.security.files.user-selected.read-write</key>
   <true/>
+  <key>com.apple.security.network.client</key>
+  <true/>
 </dict>
 </plist>
 `
@@ -245,9 +248,19 @@ if [ ! -d "${APP_BUNDLE_PATH}" ]; then
   fail "Expected App Store app bundle not found: ${APP_BUNDLE_PATH}"
 fi
 
+rm -rf "${STAGING_DIR}" || fail "Cannot remove old staging directory: ${STAGING_DIR}"
+mkdir -p "${STAGING_DIR}" || fail "Cannot create staging directory: ${STAGING_DIR}"
+STAGED_APP_BUNDLE_PATH="${STAGING_DIR}/${APP_NAME}.app"
+run_or_fail ditto --norsrc --noextattr --noqtn --noacl "${APP_BUNDLE_PATH}" "${STAGED_APP_BUNDLE_PATH}"
+find "${STAGED_APP_BUNDLE_PATH}" -name '._*' -delete || fail "Cannot remove AppleDouble files from staged app bundle"
+xattr -cr "${STAGED_APP_BUNDLE_PATH}" 2>/dev/null || true
+run_or_fail codesign --verify --strict --deep "${STAGED_APP_BUNDLE_PATH}"
+
+export COPYFILE_DISABLE=1
+
 run_or_fail xcrun productbuild \
   --sign "${MAC_INSTALLER_SIGNING_IDENTITY}" \
-  --component "${APP_BUNDLE_PATH}" \
+  --component "${STAGED_APP_BUNDLE_PATH}" \
   /Applications \
   "${PKG_PATH}"
 

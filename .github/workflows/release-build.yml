@@ -54,15 +54,15 @@ jobs:
       - name: Upload .app artifact
         uses: actions/upload-artifact@v4
         with:
-          name: md-quicklook-macos-app
-          path: src-tauri/target/**/release/bundle/macos/md-quicklook.app
+          name: ai-doc-quicklook-macos-app
+          path: src-tauri/target/**/release/bundle/macos/*.app
           if-no-files-found: error
 
       - name: Upload .dmg artifact
         uses: actions/upload-artifact@v4
         with:
-          name: md-quicklook-macos-dmg
-          path: src-tauri/target/**/release/bundle/dmg/md-quicklook_*.dmg
+          name: ai-doc-quicklook-macos-dmg
+          path: src-tauri/target/**/release/bundle/dmg/*.dmg
           if-no-files-found: warn
 
   build-windows:
@@ -98,13 +98,13 @@ jobs:
       - name: Upload NSIS installer
         uses: actions/upload-artifact@v4
         with:
-          name: md-quicklook-windows-installer
-          path: src-tauri/target/**/release/bundle/nsis/md-quicklook_*_x64-setup.exe
+          name: ai-doc-quicklook-windows-installer
+          path: src-tauri/target/**/release/bundle/nsis/*_x64-setup.exe
           if-no-files-found: error
 
       - name: Upload unpacked .exe
         uses: actions/upload-artifact@v4
         with:
-          name: md-quicklook-windows-exe
+          name: ai-doc-quicklook-windows-exe
           path: src-tauri/target/**/release/md-quicklook.exe
           if-no-files-found: warn

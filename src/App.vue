@@ -24,6 +24,7 @@ const { t } = useI18n()
 let unlistenOpenFile: (() => void) | null = null
 let unlistenMenuAction: (() => void) | null = null
 let unlistenLanguageChanged: (() => void) | null = null
+let unlistenCloseRequested: (() => void) | null = null
 
 const showOutline = ref(true)
 
@@ -111,6 +112,10 @@ async function handleMenuAction(action: string) {
           const msg = e instanceof Error ? e.message : String(e)
           if (msg !== t('export.exportCancelled')) showError(msg)
         }
+        break
+      }
+      case 'file.close_document': {
+        await closeCurrentFile()
         break
       }
       case 'view.reading': {
@@ -210,6 +215,16 @@ async function handleMenuAction(action: string) {
         break
       }
     }
+  } catch (e) {
+    showError(e instanceof Error ? e.message : String(e))
+  }
+}
+
+async function closeCurrentFile() {
+  if (!store.filePath) return
+
+  try {
+    await store.closeFile()
   } catch (e) {
     showError(e instanceof Error ? e.message : String(e))
   }
@@ -351,10 +366,23 @@ onMounted(async () => {
   }
 })
 
+onMounted(async () => {
+  try {
+    unlistenCloseRequested = await getCurrentWindow().onCloseRequested(async (event) => {
+      if (!store.filePath) return
+      event.preventDefault()
+      await closeCurrentFile()
+    })
+  } catch {
+    // If close interception is unavailable, the native window behavior remains.
+  }
+})
+
 onUnmounted(() => {
   unlistenOpenFile?.()
   unlistenMenuAction?.()
   unlistenLanguageChanged?.()
+  unlistenCloseRequested?.()
 })
 </script>
 

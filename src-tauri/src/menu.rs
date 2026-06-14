@@ -23,6 +23,7 @@ pub const MENU_FILE_SAVE: &str = "file.save";
 pub const MENU_FILE_SAVE_AS: &str = "file.save_as";
 pub const MENU_FILE_EXPORT_WORD: &str = "file.export_word";
 pub const MENU_FILE_EXPORT_EXCEL: &str = "file.export_excel";
+pub const MENU_FILE_CLOSE_DOCUMENT: &str = "file.close_document";
 
 pub const MENU_EDIT_UNDO: &str = "edit.undo";
 pub const MENU_EDIT_REDO: &str = "edit.redo";
@@ -187,10 +188,11 @@ fn build_menu_zh<R: Runtime>(app_handle: &AppHandle<R>) -> tauri::Result<tauri::
         .item(&MenuItemBuilder::with_id(MENU_FILE_EXPORT_WORD, "导出 Word...").build(app_handle)?)
         .item(&MenuItemBuilder::with_id(MENU_FILE_EXPORT_EXCEL, "导出 Excel...").build(app_handle)?)
         .separator()
-        .item(&PredefinedMenuItem::close_window(
-            app_handle,
-            Some("关闭窗口"),
-        )?)
+        .item(
+            &MenuItemBuilder::with_id(MENU_FILE_CLOSE_DOCUMENT, "关闭文件")
+                .accelerator("CmdOrCtrl+W")
+                .build(app_handle)?,
+        )
         .build()?;
 
     // ── Edit submenu ──
@@ -341,17 +343,21 @@ fn build_menu_zh<R: Runtime>(app_handle: &AppHandle<R>) -> tauri::Result<tauri::
 fn build_menu_en<R: Runtime>(app_handle: &AppHandle<R>) -> tauri::Result<tauri::menu::Menu<R>> {
     let about_meta = || {
         AboutMetadataBuilder::new()
-            .name(Some(String::from("md-quicklook")))
+            .name(Some(String::from("AI Doc QuickLook")))
             .version(Some(String::from("1.9.0")))
-            .authors(Some(vec![String::from("md-quicklook contributors")]))
+            .authors(Some(vec![String::from("AI Doc QuickLook contributors")]))
             .website(Some(String::from("https://github.com")))
             .build()
     };
 
     // ── App submenu ──
     let app_submenu_builder =
-        SubmenuBuilder::with_id(app_handle, APP_SUBMENU_ID, "md-quicklook").item(
-            &PredefinedMenuItem::about(app_handle, Some("About md-quicklook"), Some(about_meta()))?,
+        SubmenuBuilder::with_id(app_handle, APP_SUBMENU_ID, "AI Doc QuickLook").item(
+            &PredefinedMenuItem::about(
+                app_handle,
+                Some("About AI Doc QuickLook"),
+                Some(about_meta()),
+            )?,
         );
     #[cfg(target_os = "macos")]
     let app_submenu_builder = app_submenu_builder
@@ -360,7 +366,7 @@ fn build_menu_en<R: Runtime>(app_handle: &AppHandle<R>) -> tauri::Result<tauri::
         .separator()
         .item(&PredefinedMenuItem::hide(
             app_handle,
-            Some("Hide md-quicklook"),
+            Some("Hide AI Doc QuickLook"),
         )?)
         .item(&PredefinedMenuItem::hide_others(
             app_handle,
@@ -371,7 +377,7 @@ fn build_menu_en<R: Runtime>(app_handle: &AppHandle<R>) -> tauri::Result<tauri::
         .separator()
         .item(&PredefinedMenuItem::quit(
             app_handle,
-            Some("Quit md-quicklook"),
+            Some("Quit AI Doc QuickLook"),
         )?)
         .build()?;
 
@@ -400,10 +406,11 @@ fn build_menu_en<R: Runtime>(app_handle: &AppHandle<R>) -> tauri::Result<tauri::
                 .build(app_handle)?,
         )
         .separator()
-        .item(&PredefinedMenuItem::close_window(
-            app_handle,
-            Some("Close Window"),
-        )?)
+        .item(
+            &MenuItemBuilder::with_id(MENU_FILE_CLOSE_DOCUMENT, "Close File")
+                .accelerator("CmdOrCtrl+W")
+                .build(app_handle)?,
+        )
         .build()?;
 
     // ── Edit submenu ──

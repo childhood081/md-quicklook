@@ -1,7 +1,7 @@
 export default {
   // ── App / Global ──
   app: {
-    name: 'md-quicklook',
+    name: 'AI Doc QuickLook',
   },
 
   // ── Modes ──
