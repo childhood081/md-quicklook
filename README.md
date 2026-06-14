@@ -23,8 +23,9 @@ Current package status: **v1.9.0 beta**.
 - 💾 **Smart Auto-Save** — 800ms debounced save to original file, atomic writes (temp-file + rename)
 - 🛡️ **Safe Saves** — Temp-file + atomic rename prevents partial writes; `.bak` backup on open and manual save
 - 🌐 **Full-App i18n** — Complete Chinese (zh-CN) and English (en-US) translation with vue-i18n covering native menu, toolbar, welcome page, editor, dialogs, error messages, and all UI text
-- 📊 **Excel Export** — Extract Markdown tables to `.xlsx` with multi-sheet, number detection, frozen headers, and heading-based sheet names
-- 📝 **Word Export** — Convert Markdown to `.docx` with Chinese font optimization (SimSun body, Microsoft YaHei headings)
+- 📊 **Excel Export** — Convert table-only Markdown files to `.xlsx` with number detection, frozen headers, and safe sheet names
+- 📝 **Word Export** — Convert Markdown to `.docx` with reading-mode-inspired styling and Chinese font optimization
+- 📄 **PDF Export** — Print the reading-mode HTML/CSS through the system print dialog for the closest visual match
 - 💾 **Flexible Export Paths** — Native save dialog lets you choose where to save Word and Excel exports
 - 🚫 **Smart Excel Handling** — Clear prompt when no tables exist, no empty workbooks
 - 🎯 **Welcome Page** — Drag-drop to open, file picker, and recent files list
@@ -87,8 +88,10 @@ md-quicklook/
 │   │   └── editor.ts
 │   ├── styles/            # CSS
 │   ├── utils/             # Markdown rendering, exports
-│   │   ├── exportDocx.ts  # Word export with Chinese fonts
-│   │   └── exportExcel.ts # Excel table extraction
+│   │   ├── exportDocx.ts  # Word export with shared export theme
+│   │   ├── exportExcel.ts # Table-only Markdown Excel export
+│   │   ├── exportPdf.ts   # PDF export via system print
+│   │   └── documentExportTheme.ts # Shared export style tokens
 │   ├── App.vue
 │   └── main.ts
 ├── src-tauri/             # Rust/Tauri backend

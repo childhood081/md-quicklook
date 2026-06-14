@@ -27,6 +27,19 @@ function sanitizeSheetName(name: string): string {
     .slice(0, MAX_SHEET_NAME) || 'Sheet'
 }
 
+function uniqueSheetName(baseName: string, usedNames: Set<string>): string {
+  const sanitizedBase = sanitizeSheetName(baseName)
+  if (!usedNames.has(sanitizedBase)) return sanitizedBase
+
+  let counter = 2
+  while (true) {
+    const suffix = `_${counter}`
+    const candidate = `${sanitizedBase.slice(0, MAX_SHEET_NAME - suffix.length)}${suffix}`
+    if (!usedNames.has(candidate)) return candidate
+    counter++
+  }
+}
+
 // ── Table row parsing ──────────────────────────────────────────────
 
 function endsWithUnescapedPipe(value: string): boolean {
@@ -353,15 +366,10 @@ export async function generateXlsxBytes(markdown: string, fileName?: string): Pr
     })
 
     // Build unique sheet name
-    let name = index === 0
+    const baseName = index === 0
       ? defaultSheetName
       : sanitizeSheetName(table.heading || `Table ${index + 1}`)
-
-    if (usedNames.has(name)) {
-      let counter = 2
-      while (usedNames.has(`${name}_${counter}`)) counter++
-      name = `${name}_${counter}`
-    }
+    const name = uniqueSheetName(baseName, usedNames)
     usedNames.add(name)
 
     XLSX.utils.book_append_sheet(workbook, sheet, name)

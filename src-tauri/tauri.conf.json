@@ -1,6 +1,6 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "AI 文档快看",
+  "productName": "md-quicklook",
   "version": "1.9.0",
   "identifier": "com.mdquicklook.desktop",
   "build": {

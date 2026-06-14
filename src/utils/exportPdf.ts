@@ -193,12 +193,6 @@ async function buildPrintHtml(markdown: string): Promise<string> {
 </head>
 <body>
   <div class="reader-content">${bodyHtml}</div>
-  <script>
-    // Auto-trigger print when loaded
-    window.addEventListener('DOMContentLoaded', function() {
-      setTimeout(function() { window.print(); }, 200);
-    });
-  <\/script>
 </body>
 </html>`
 }

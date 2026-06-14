@@ -66,7 +66,7 @@ PDF 通过系统打印对话框生成：
 
 1. 前端渲染 Markdown 为 HTML（含 Shiki 代码高亮）
 2. 构建自包含 HTML 文档（嵌入阅读模式 CSS + 打印 CSS）
-3. 在隐藏 iframe 中加载并触发 `window.print()`
+3. 在隐藏 iframe 中加载，等待文档完成后由 iframe `onload` 触发一次 `window.print()`
 4. 用户在系统打印窗口中选择"保存为 PDF"
 
 ### 接近程度
@@ -91,6 +91,6 @@ PDF 是最接近阅读模式的导出方式，因为：
 | `src/utils/documentExportTheme.ts` | 主题配置（所有视觉参数） |
 | `src/utils/exportDocx.ts` | Word 导出（读取主题） |
 | `src/utils/exportExcel.ts` | Excel 导出（读取主题） |
-| `src/utils/exportPdf.ts` | PDF 导出（读取主题 + 内联 CSS） |
+| `src/utils/exportPdf.ts` | PDF 导出（读取主题 + 内联 reader/print CSS） |
 | `src/styles/reader.css` | 阅读模式样式（视觉标准） |
-| `src/styles/print.css` | 打印样式（PDF @page 规则） |
+| `src/styles/print.css` | 打印样式（PDF 规则来源；当前导出实现以内联方式镜像这些规则） |
