@@ -4,6 +4,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { save } from '@tauri-apps/plugin-dialog'
 import { generateXlsxBytes } from '../utils/exportExcel'
 import { generateDocxBytes } from '../utils/exportDocx'
+import { exportPdf } from '../utils/exportPdf'
 import {
   generateTitleFromFrontMatter,
   insertFrontMatterTemplate,
@@ -249,7 +250,7 @@ export const useEditorStore = defineStore('editor', () => {
     if (!filePath.value) {
       throw new Error(i18n.global.t('error.needOpenFile'))
     }
-    const bytes = await generateXlsxBytes(currentContent.value)
+    const bytes = await generateXlsxBytes(currentContent.value, fileName.value)
     const savePath = await save({
       title: i18n.global.t('dialog.exportExcelTitle'),
       defaultPath: defaultExportName('xlsx'),
@@ -258,6 +259,13 @@ export const useEditorStore = defineStore('editor', () => {
     if (!savePath) throw new Error(i18n.global.t('export.exportCancelled'))
     await invoke('export_xlsx', { outputPath: savePath, bytes: Array.from(bytes) })
     return savePath
+  }
+
+  async function exportToPdf(): Promise<void> {
+    if (!filePath.value) {
+      throw new Error(i18n.global.t('error.needOpenFile'))
+    }
+    await exportPdf(currentContent.value)
   }
 
   async function exportToWord(): Promise<string> {
@@ -324,6 +332,6 @@ export const useEditorStore = defineStore('editor', () => {
     loadFile, saveFile, manualSave, closeFile, setContent, setMode,
     zoomIn, zoomOut, resetZoom,
     insertFrontMatter, getFrontMatter, updateFrontMatter, clearFrontMatter, generateTitleFromMetadata,
-    exportTablesToExcel, exportToWord,
+    exportTablesToExcel, exportToWord, exportToPdf,
   }
 })

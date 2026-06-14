@@ -100,6 +100,19 @@ async function handleMenuAction(action: string) {
         }
         break
       }
+      case 'file.export_pdf': {
+        if (!store.filePath) {
+          showWarning(t('error.needOpenFile'))
+          break
+        }
+        try {
+          await store.exportToPdf()
+        } catch (e: unknown) {
+          const msg = e instanceof Error ? e.message : String(e)
+          if (msg !== t('export.exportCancelled')) showError(msg)
+        }
+        break
+      }
       case 'file.export_excel': {
         if (!store.filePath) {
           showWarning(t('error.needOpenFile'))

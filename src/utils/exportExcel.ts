@@ -1,15 +1,22 @@
-import type * as XLSXType from 'xlsx'
 import { i18n } from '../i18n'
-import { normalizeMarkdownForRender } from './markdown'
-
-type XlsxModule = typeof import('xlsx')
+import { normalizeMarkdownForRender, parseFrontMatter } from './markdown'
+import {
+  tableHeaderBg,
+  tableHeaderTextColor,
+  tableBorderColor,
+  tableEvenRowBg,
+  bodyFontZh,
+  bodyColor,
+  bodyFontSize,
+} from './documentExportTheme'
 
 export type MarkdownTable = {
   rows: string[][]
   heading?: string
 }
 
-// Sheet name helpers
+// ── Sheet name helpers ─────────────────────────────────────────────
+
 const MAX_SHEET_NAME = 31
 const SHEET_NAME_ILLEGAL = /[\[\]:*?/\\]/g
 
@@ -19,6 +26,8 @@ function sanitizeSheetName(name: string): string {
     .replace(/^\s+|\s+$/g, '')
     .slice(0, MAX_SHEET_NAME) || 'Sheet'
 }
+
+// ── Table row parsing ──────────────────────────────────────────────
 
 function endsWithUnescapedPipe(value: string): boolean {
   let slashCount = 0
@@ -80,11 +89,12 @@ function extractPrecedingHeading(lines: string[], tableStartIndex: number): stri
     if (line === '') continue
     const match = line.match(/^#{1,6}\s+(.+)/)
     if (match) return match[1].trim()
-    // If we hit a non-heading, non-empty line, stop looking
     if (!line.startsWith('#')) break
   }
   return undefined
 }
+
+// ── Table extraction ───────────────────────────────────────────────
 
 export function parseMarkdownTables(markdown: string): MarkdownTable[] {
   const lines = normalizeMarkdownForRender(markdown).replace(/\r\n?/g, '\n').split('\n')
@@ -111,18 +121,77 @@ export function parseMarkdownTables(markdown: string): MarkdownTable[] {
   return tables
 }
 
-function sheetName(index: number, heading?: string): string {
-  if (heading) {
-    const sanitized = sanitizeSheetName(heading)
-    if (sanitized.length > 0) return sanitized
+// ── Table-only detection ───────────────────────────────────────────
+
+/**
+ * Check whether the Markdown content is a "table-only" document.
+ *
+ * A table-only document may have:
+ * 1. YAML Front Matter (optional)
+ * 2. A single H1 heading after front matter (optional)
+ * 3. The body must consist entirely of Markdown tables
+ *
+ * Documents with paragraphs, lists, code blocks, or other non-table
+ * content mixed with tables are NOT table-only.
+ */
+export function isTableOnlyMarkdown(markdown: string): boolean {
+  const lines = normalizeMarkdownForRender(markdown).replace(/\r\n?/g, '\n').split('\n')
+  let i = 0
+  let tableCount = 0
+
+  // Skip leading blank lines
+  while (i < lines.length && lines[i].trim() === '') i++
+  if (i >= lines.length) return false
+
+  // Skip optional single H1 heading
+  if (/^#\s+.+/.test(lines[i].trim())) i++
+
+  // Verify all remaining content is tables
+  while (i < lines.length) {
+    const line = lines[i].trim()
+
+    // Skip blank lines (separators between tables)
+    if (line === '') {
+      i++
+      continue
+    }
+
+    // Must start a table: header row + separator row
+    if (!isTableRow(line)) return false
+    if (i + 1 >= lines.length || !isSeparatorRow(lines[i + 1].trim())) return false
+
+    tableCount++
+    i += 2 // skip header + separator
+
+    // Consume data rows
+    while (i < lines.length) {
+      const dataLine = lines[i].trim()
+      if (dataLine === '') break // End of this table (blank line before next table)
+
+      if (!isTableRow(dataLine)) {
+        // Could be start of next table (header + separator)
+        if (i + 1 < lines.length && isSeparatorRow(lines[i + 1].trim())) {
+          break // New table starts here
+        }
+        return false // Non-table content found
+      }
+      i++
+    }
   }
-  return `Table ${index + 1}`
+
+  return tableCount > 0
 }
+
+// ── Sheet name resolution ──────────────────────────────────────────
+
+/**
+ * Resolve sheet name from front matter title → H1 → filename → fallback.
+ */
+// ── Number detection ───────────────────────────────────────────────
 
 function isNumericValue(value: string): boolean {
   const trimmed = value.trim()
   if (trimmed === '') return false
-  // Match integers, decimals, negative numbers, percentages
   return /^-?\d+(\.\d+)?%?$/.test(trimmed)
 }
 
@@ -136,60 +205,158 @@ function toNumericValue(value: string): number | string {
   return isNaN(num) ? value : num
 }
 
-/** Convert numeric-looking strings in data rows (skip header) to numbers for proper Excel formatting. */
 function convertNumericCells(rows: string[][]): (string | number)[][] {
   return rows.map((row, rowIndex) => {
-    if (rowIndex === 0) return row.slice() // header stays as-is
+    if (rowIndex === 0) return row.slice()
     return row.map((cell) => (isNumericValue(cell) ? toNumericValue(cell) : cell))
   })
 }
 
-function applyWorksheetMetadata(
-  sheet: XLSXType.WorkSheet,
-  processedRows: (string | number)[][],
-  xlsx: XlsxModule,
-) {
-  const columnCount = processedRows[0]?.length ?? 0
-  if (processedRows.length > 0 && columnCount > 0) {
-    sheet['!autofilter'] = {
-      ref: xlsx.utils.encode_range({
-        s: { r: 0, c: 0 },
-        e: { r: processedRows.length - 1, c: columnCount - 1 },
-      }),
-    }
-  }
+// ── Theme style builders (xlsx-js-style) ────────────────────────────
 
-  // Freeze header row
-  if (processedRows.length > 1) {
-    ;(sheet as Record<string, unknown>)['!freeze'] = { xsplit: 0, ysplit: 1 }
+interface CellStyle {
+  font: { name: string; sz: number; bold?: boolean; color?: { rgb: string } }
+  fill?: { fgColor: { rgb: string }; patternType: 'solid' }
+  border: {
+    top: { style: 'thin'; color: { rgb: string } }
+    bottom: { style: 'thin'; color: { rgb: string } }
+    left: { style: 'thin'; color: { rgb: string } }
+    right: { style: 'thin'; color: { rgb: string } }
   }
-
-  // Auto-fit column widths
-  sheet['!cols'] = Array.from({ length: columnCount }, (_, columnIndex) => {
-    const maxLength = Math.max(
-      ...processedRows.map((row) => String(row[columnIndex] ?? '').length),
-    )
-    return { wch: Math.min(Math.max(maxLength + 2, 10), 40) }
-  })
+  alignment: { vertical: 'center' }
 }
 
-export async function generateXlsxBytes(markdown: string): Promise<Uint8Array> {
+function hex6(c: string): string {
+  return c.replace('#', '').toUpperCase()
+}
+
+function makeHeaderStyle(): CellStyle {
+  return {
+    font: {
+      name: bodyFontZh,
+      sz: bodyFontSize,
+      bold: true,
+      color: { rgb: hex6(tableHeaderTextColor) },
+    },
+    fill: { fgColor: { rgb: hex6(tableHeaderBg) }, patternType: 'solid' },
+    border: {
+      top: { style: 'thin', color: { rgb: hex6(tableBorderColor) } },
+      bottom: { style: 'thin', color: { rgb: hex6(tableBorderColor) } },
+      left: { style: 'thin', color: { rgb: hex6(tableBorderColor) } },
+      right: { style: 'thin', color: { rgb: hex6(tableBorderColor) } },
+    },
+    alignment: { vertical: 'center' },
+  }
+}
+
+function makeBodyStyle(even: boolean): CellStyle {
+  return {
+    font: { name: bodyFontZh, sz: bodyFontSize, color: { rgb: hex6(bodyColor) } },
+    fill: even
+      ? { fgColor: { rgb: hex6(tableEvenRowBg) }, patternType: 'solid' }
+      : undefined,
+    border: {
+      top: { style: 'thin', color: { rgb: hex6(tableBorderColor) } },
+      bottom: { style: 'thin', color: { rgb: hex6(tableBorderColor) } },
+      left: { style: 'thin', color: { rgb: hex6(tableBorderColor) } },
+      right: { style: 'thin', color: { rgb: hex6(tableBorderColor) } },
+    },
+    alignment: { vertical: 'center' },
+  }
+}
+
+// ── Sheet name extraction ──────────────────────────────────────────
+
+/**
+ * Extract the best sheet name from Markdown content.
+ * Priority: Front Matter title → first H1 → fileName → "Sheet1"
+ */
+function extractSheetName(markdown: string, fallbackFile: string): string {
+  // Try front matter title
+  const { metadata } = parseFrontMatter(markdown)
+  if (metadata.title) {
+    const sanitized = sanitizeSheetName(metadata.title)
+    if (sanitized.length > 0) return sanitized
+  }
+
+  // Try first H1
+  const body = normalizeMarkdownForRender(markdown)
+  const h1Match = body.match(/^#\s+(.+)/m)
+  if (h1Match) {
+    const sanitized = sanitizeSheetName(h1Match[1].trim())
+    if (sanitized.length > 0) return sanitized
+  }
+
+  // Fall back to file name (without extension)
+  const base = fallbackFile.replace(/\.[^.]+$/, '') || 'Sheet1'
+  const sanitized = sanitizeSheetName(base)
+  return sanitized || 'Sheet1'
+}
+
+// ── Main export function ────────────────────────────────────────────
+
+export async function generateXlsxBytes(markdown: string, fileName?: string): Promise<Uint8Array> {
+  // Check table-only boundary
+  if (!isTableOnlyMarkdown(markdown)) {
+    throw new Error(i18n.global.t('export.notTableOnly'))
+  }
+
   const tables = parseMarkdownTables(markdown)
   if (tables.length === 0) {
     throw new Error(i18n.global.t('export.noTables'))
   }
 
-  const XLSX = await import('xlsx')
+  const XLSX = await import('xlsx-js-style')
   const workbook = XLSX.utils.book_new()
   const usedNames = new Set<string>()
+  const defaultSheetName = extractSheetName(markdown, fileName || 'export')
+  const headerStyle = makeHeaderStyle()
+  const bodyStyle = makeBodyStyle(false)
+  const evenStyle = makeBodyStyle(true)
 
   for (const [index, table] of tables.entries()) {
     const processedRows = convertNumericCells(table.rows)
-    const sheet = XLSX.utils.aoa_to_sheet(processedRows)
-    applyWorksheetMetadata(sheet, processedRows, XLSX)
+
+    // Build styled cells with xlsx-js-style
+    const styledRows = processedRows.map((row, rowIndex) =>
+      row.map((cell) => ({
+        v: cell,
+        t: typeof cell === 'number' ? 'n' : 's',
+        s: rowIndex === 0 ? headerStyle : (rowIndex % 2 === 0 ? evenStyle : bodyStyle),
+      })),
+    )
+
+    const sheet = XLSX.utils.aoa_to_sheet(styledRows)
+
+    // Auto-filter
+    const columnCount = processedRows[0]?.length ?? 0
+    if (processedRows.length > 0 && columnCount > 0) {
+      sheet['!autofilter'] = {
+        ref: XLSX.utils.encode_range({
+          s: { r: 0, c: 0 },
+          e: { r: processedRows.length - 1, c: columnCount - 1 },
+        }),
+      }
+    }
+
+    // Freeze header row
+    if (processedRows.length > 1) {
+      ;(sheet as Record<string, unknown>)['!freeze'] = { xsplit: 0, ysplit: 1 }
+    }
+
+    // Auto-fit column widths
+    sheet['!cols'] = Array.from({ length: columnCount }, (_, columnIndex) => {
+      const maxLength = Math.max(
+        ...processedRows.map((row) => String(row[columnIndex] ?? '').length),
+      )
+      return { wch: Math.min(Math.max(maxLength + 2, 10), 40) }
+    })
 
     // Build unique sheet name
-    let name = sanitizeSheetName(sheetName(index, table.heading))
+    let name = index === 0
+      ? defaultSheetName
+      : sanitizeSheetName(table.heading || `Table ${index + 1}`)
+
     if (usedNames.has(name)) {
       let counter = 2
       while (usedNames.has(`${name}_${counter}`)) counter++

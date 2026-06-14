@@ -9,6 +9,7 @@ const store = useEditorStore()
 const { error: toastError, success: toastSuccess } = useToast()
 const { t } = useI18n()
 const isExporting = ref(false)
+const isExportingPdf = ref(false)
 const isExportingWord = ref(false)
 
 const modes = computed(() => [
@@ -62,6 +63,20 @@ async function exportExcel() {
     if (msg !== t('export.exportCancelled')) toastError(msg)
   } finally {
     isExporting.value = false
+  }
+}
+
+async function exportPdf() {
+  if (isExportingPdf.value) return
+
+  isExportingPdf.value = true
+  try {
+    await store.exportToPdf()
+  } catch (e) {
+    const msg = errorMessage(e)
+    if (msg !== t('export.exportCancelled')) toastError(msg)
+  } finally {
+    isExportingPdf.value = false
   }
 }
 
@@ -136,6 +151,14 @@ async function exportWord() {
           class="btn-swiss btn-secondary"
         >
           {{ isExporting ? $t('toolbar.exporting') : $t('toolbar.excel') }}
+        </button>
+
+        <button
+          @click="exportPdf"
+          :disabled="!store.filePath || isExportingPdf"
+          class="btn-swiss btn-secondary"
+        >
+          {{ isExportingPdf ? $t('toolbar.exporting') : $t('toolbar.pdf') }}
         </button>
 
         <button

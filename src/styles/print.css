@@ -1,0 +1,109 @@
+/* PDF / Print styles for AI 文档快看
+   Applied on top of reader.css when printing to PDF.
+
+   Goal: the printed page should look as close as possible to the
+   reading mode paper, with system-appropriate margins. */
+
+@page {
+  size: A4;
+  margin: 12mm 15mm;
+}
+
+/* Preserve background colors and images when printing.
+   WebKit/Blink browsers often strip backgrounds by default. */
+* {
+  -webkit-print-color-adjust: exact !important;
+  print-color-adjust: exact !important;
+}
+
+/* ── Paper container ────────────────────────────────────────────── */
+
+.reader-content {
+  /* Override the on-screen paper styling for print:
+     remove shadow, border, and the tall bottom padding.
+     The @page margin handles outer spacing. */
+  max-width: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  min-height: auto !important;
+  font-size: 12pt !important;
+  line-height: 1.6 !important;
+}
+
+/* ── Headings ───────────────────────────────────────────────────── */
+
+.reader-content h1 {
+  font-size: 24pt !important;
+  page-break-after: avoid;
+}
+
+.reader-content h2 {
+  font-size: 18pt !important;
+  page-break-after: avoid;
+}
+
+.reader-content h3 {
+  font-size: 14pt !important;
+  page-break-after: avoid;
+}
+
+.reader-content h4 {
+  font-size: 12pt !important;
+  page-break-after: avoid;
+}
+
+/* ── Avoid breaks inside blocks ─────────────────────────────────── */
+
+.reader-content pre,
+.reader-content blockquote,
+.reader-content table {
+  page-break-inside: avoid;
+}
+
+.reader-content tr {
+  page-break-inside: avoid;
+}
+
+/* ── Code blocks ────────────────────────────────────────────────── */
+
+.reader-content pre {
+  white-space: pre-wrap !important;
+  word-break: break-word !important;
+  overflow-x: visible !important;
+  font-size: 10pt !important;
+}
+
+.reader-content pre code {
+  white-space: pre-wrap !important;
+  word-break: break-word !important;
+}
+
+/* ── Tables ─────────────────────────────────────────────────────── */
+
+.reader-content table {
+  font-size: 10pt !important;
+  table-layout: auto;
+}
+
+.reader-content th,
+.reader-content td {
+  word-break: break-word;
+}
+
+/* ── Images ─────────────────────────────────────────────────────── */
+
+.reader-content img {
+  max-width: 100% !important;
+  page-break-inside: avoid;
+}
+
+/* ── Links: show URL for reference (print convention) ───────────── */
+
+.reader-content a[href^="http"]::after {
+  content: " (" attr(href) ")";
+  font-size: 0.8em;
+  color: #6f716f;
+}

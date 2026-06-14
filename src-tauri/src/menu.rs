@@ -23,6 +23,7 @@ pub const MENU_FILE_SAVE: &str = "file.save";
 pub const MENU_FILE_SAVE_AS: &str = "file.save_as";
 pub const MENU_FILE_EXPORT_WORD: &str = "file.export_word";
 pub const MENU_FILE_EXPORT_EXCEL: &str = "file.export_excel";
+pub const MENU_FILE_EXPORT_PDF: &str = "file.export_pdf";
 pub const MENU_FILE_CLOSE_DOCUMENT: &str = "file.close_document";
 
 pub const MENU_EDIT_UNDO: &str = "edit.undo";
@@ -187,6 +188,7 @@ fn build_menu_zh<R: Runtime>(app_handle: &AppHandle<R>) -> tauri::Result<tauri::
         .separator()
         .item(&MenuItemBuilder::with_id(MENU_FILE_EXPORT_WORD, "导出 Word...").build(app_handle)?)
         .item(&MenuItemBuilder::with_id(MENU_FILE_EXPORT_EXCEL, "导出 Excel...").build(app_handle)?)
+        .item(&MenuItemBuilder::with_id(MENU_FILE_EXPORT_PDF, "导出 PDF...").build(app_handle)?)
         .separator()
         .item(
             &MenuItemBuilder::with_id(MENU_FILE_CLOSE_DOCUMENT, "关闭文件")
@@ -405,6 +407,7 @@ fn build_menu_en<R: Runtime>(app_handle: &AppHandle<R>) -> tauri::Result<tauri::
             &MenuItemBuilder::with_id(MENU_FILE_EXPORT_EXCEL, "Export Excel...")
                 .build(app_handle)?,
         )
+        .item(&MenuItemBuilder::with_id(MENU_FILE_EXPORT_PDF, "Export PDF...").build(app_handle)?)
         .separator()
         .item(
             &MenuItemBuilder::with_id(MENU_FILE_CLOSE_DOCUMENT, "Close File")
