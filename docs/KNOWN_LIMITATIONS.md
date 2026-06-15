@@ -21,7 +21,7 @@
 
 - 原生菜单语言当前只支持 `zh-CN` 和 `en-US`。
 - 顶部原生菜单是语言切换主入口；当前没有单独的 Vue 设置页。
-- 系统原生文件对话框按钮由操作系统控制，可能不会跟随 md-quicklook 应用语言。
+- 系统原生文件对话框按钮由操作系统控制，可能不会跟随 AI 文档快看应用语言。
 - 后端 Rust 错误和底层 OS 错误仍可能包含英文；前端业务提示已尽量使用 i18n key。
 - 原生菜单语言切换失败目前主要记录在后端路径中；最终发布前应手动验证持久化配置目录可写。
 - Windows / macOS 菜单的编辑命令会转发给当前前端模式；阅读模式没有编辑历史，因此撤销 / 重做会降级提示。
@@ -64,7 +64,7 @@
 - 未签名 .dmg 需用户手动绕过 Gatekeeper（右键→Open 或 xattr 移除 quarantine）
 - 未公证 .dmg 首次启动有额外安全警告
 - 当前 macOS 16 beta 环境中，Tauri 自动 `.dmg` 创建使用的 `create-dmg` 可能失败；beta DMG 使用 `scripts/build-macos-dmg.sh` 通过 `hdiutil` 生成
-- 当前 hdiutil beta DMG 包含 `md-quicklook.app` 和 `Applications` 快捷方式，但不包含自定义安装背景、图标布局或签名
+- 当前 hdiutil beta DMG 包含 `AI 文档快看.app` 和 `Applications` 快捷方式，但不包含自定义安装背景、图标布局或签名
 - 需要 Apple Developer Program 会员 + Developer ID 证书才能签名和公证
 - 最低系统要求 macOS 11.0 (Big Sur)，不再支持 macOS 10.15
 

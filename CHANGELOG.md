@@ -8,9 +8,8 @@
 - Enhanced macOS bundle configuration (minimumSystemVersion 11.0)
 - Enhanced Windows NSIS configuration (languages, shortcuts, file associations)
 - Added repeatable macOS beta DMG script using hdiutil fallback for current macOS 16 create-dmg compatibility issues
-- Added distribution documentation (MAC_DISTRIBUTION.md, WINDOWS_DISTRIBUTION.md)
-- Added App Store preparation documentation (APP_STORE_PREP.md)
-- Added CHANGELOG.md, RELEASE_CHECKLIST.md, KNOWN_LIMITATIONS.md
+- Added consolidated distribution documentation for macOS, Windows, and App Store preparation
+- Added release checklist and known limitations documentation
 
 ### Beta Release Notes
 - Current macOS DMG is unsigned and not notarized
@@ -28,20 +27,20 @@
 - Implemented language sync between native menu and frontend via events
 - Language persistence across app restarts via Rust backend settings.json
 - Source editor placeholder dynamically updates on language change (CodeMirror Compartment)
-- Added APP_I18N.md architecture documentation and I18N_TESTING.md checklist
+- Added app-wide i18n architecture documentation and testing checklist
 
 ## [1.8.0] — 2026-06-11
 
 ### Windows Menu & Cross-Platform Polish
 - Added `#[cfg(target_os = "macos")]` guards for macOS-only menu items
 - Windows native menu now renders without macOS-specific items (Services, Hide, etc.)
-- Added WINDOWS_MENU.md documentation
+- Added Windows menu documentation
 
 ### Export Path Selection
 - Refactored Word and Excel export to use native save dialog (`@tauri-apps/plugin-dialog`)
 - Users can now choose where to save exported files
 - Export functions return bytes, callers handle dialog + invoke
-- Added EXPORT_PATH.md documentation
+- Added export path documentation
 
 ### Excel Export Improvements
 - Heading-based sheet names (extracted from Markdown headings preceding tables)
@@ -49,7 +48,7 @@
 - Frozen header rows in exported sheets
 - Smart no-table handling with clear user prompt
 - Sheet name sanitization (31-char limit, illegal character removal, deduplication)
-- Added EXCEL_EXPORT_TESTING.md (10 test cases)
+- Added Excel export testing coverage
 
 ## [1.7.0] — 2026-06-10
 
@@ -62,7 +61,7 @@
 ### Word Export Chinese Font Optimization
 - SimSun body text, Microsoft YaHei headings, Consolas code blocks
 - Proper font configuration via `IFontAttributesProperties`
-- Added DOCX_FONT_TESTING.md
+- Added Word export font testing coverage
 
 ### Frontend Features
 - Menu-action event listener in App.vue

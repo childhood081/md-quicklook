@@ -1,4 +1,4 @@
-# md-quicklook / AI 文档快看
+# AI 文档快看
 
 AI 文档快看是一个轻量、离线、原生桌面的文档查看与导出工具，专为 AI 生成的 Markdown 文档优化。基于 **Tauri 2 + Vue 3 + TypeScript** 构建。
 
@@ -11,7 +11,7 @@ Current package status: **v1.9.0 beta**.
 - macOS Apple Silicon `.app` and beta `.dmg` can be built locally.
 - The current macOS beta `.dmg` is **unsigned and not notarized**.
 - Windows packaging configuration exists, but the Windows installer has **not been verified on a real Windows machine**.
-- md-quicklook / AI 文档快看 is **not listed on the Mac App Store**.
+- AI 文档快看 is **not listed on the Mac App Store**.
 - Treat current packages as small-scope beta test builds, not a final public release.
 
 ## Features
@@ -103,22 +103,18 @@ md-quicklook/
 │   ├── capabilities/
 │   └── tauri.conf.json
 ├── docs/
-│   ├── MENU_I18N.md          # Menu internationalization guide
-│   ├── DOCX_FONT_TESTING.md  # Word export font verification
-│   ├── WINDOWS_MENU.md       # Windows menu behavior & testing
-│   ├── EXPORT_PATH.md        # Export path selection mechanism
-│   ├── EXCEL_EXPORT_TESTING.md # Excel export testing guide
-│   ├── APP_I18N.md           # App internationalization architecture
-│   ├── I18N_TESTING.md       # i18n testing checklist
-│   ├── MAC_DISTRIBUTION.md   # macOS .app/.dmg distribution guide
-│   ├── MAC_DMG_SCRIPT.md     # Repeatable hdiutil beta DMG build script
-│   ├── APP_STORE_PREP.md     # Mac App Store preparation
-│   ├── WINDOWS_DISTRIBUTION.md # Windows NSIS installer guide
-│   ├── RELEASE_CHECKLIST.md  # Pre-release verification checklist
-│   ├── KNOWN_LIMITATIONS.md  # Known issues and limitations
-│   └── TESTING.md            # Manual testing checklist
+│   ├── RELEASE_CHECKLIST.md          # Pre-release verification checklist
+│   ├── KNOWN_LIMITATIONS.md          # Known issues and limitations
+│   ├── WINDOWS_DISTRIBUTION.md       # Windows NSIS installer guide
+│   ├── MAC_DISTRIBUTION.md           # macOS .app/.dmg distribution guide
+│   ├── APP_STORE_PREP.md             # Mac App Store preparation
+│   ├── EXPORT_VISUAL_CONSISTENCY.md  # Word / Excel / PDF export behavior
+│   ├── PDF_EXPORT.md                 # PDF system print export details
+│   ├── PDF_EXPORT_TESTING.md         # PDF manual test checklist
+│   ├── EXCEL_EXPORT_TESTING.md       # Excel table-only export testing
+│   ├── FRONT_MATTER_TESTING.md       # Front Matter behavior and tests
+│   └── WINDOWS_MENU_TESTING.md       # Windows/macOS native menu testing
 ├── CHANGELOG.md           # Version history
-├── test.md                # Sample Markdown for testing
 └── package.json
 ```
 
@@ -128,7 +124,7 @@ md-quicklook/
 
 1. Build the app: `npx tauri build`
 2. Install the `.dmg` to `/Applications`
-3. Right-click any `.md` file → **Get Info** → **Open with** → select **md-quicklook** → **Change All**
+3. Right-click any `.md` file → **Get Info** → **Open with** → select **AI 文档快看** → **Change All**
 4. Alternatively, in Finder: select a `.md` file → **File** → **Get Info** → set default app
 
 The app's `Info.plist` declares support for `.md` and `.markdown` extensions via `CFBundleDocumentTypes`.
@@ -136,8 +132,8 @@ The app's `Info.plist` declares support for `.md` and `.markdown` extensions via
 ### Windows
 
 1. Build the app: `npx tauri build`
-2. Install the `.msi`
-3. Right-click any `.md` file → **Open with** → **Choose another app** → select **md-quicklook** → **Always**
+2. Install the NSIS installer
+3. Right-click any `.md` file → **Open with** → **Choose another app** → select **AI 文档快看** → **Always**
 4. The installer registers `.md` and `.markdown` file associations via the Windows registry.
 
 ### From CLI

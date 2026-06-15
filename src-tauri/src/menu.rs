@@ -345,19 +345,19 @@ fn build_menu_zh<R: Runtime>(app_handle: &AppHandle<R>) -> tauri::Result<tauri::
 fn build_menu_en<R: Runtime>(app_handle: &AppHandle<R>) -> tauri::Result<tauri::menu::Menu<R>> {
     let about_meta = || {
         AboutMetadataBuilder::new()
-            .name(Some(String::from("AI Doc QuickLook")))
+            .name(Some(String::from("AI 文档快看")))
             .version(Some(String::from("1.9.0")))
-            .authors(Some(vec![String::from("AI Doc QuickLook contributors")]))
+            .authors(Some(vec![String::from("AI 文档快看 contributors")]))
             .website(Some(String::from("https://github.com")))
             .build()
     };
 
     // ── App submenu ──
     let app_submenu_builder =
-        SubmenuBuilder::with_id(app_handle, APP_SUBMENU_ID, "AI Doc QuickLook").item(
+        SubmenuBuilder::with_id(app_handle, APP_SUBMENU_ID, "AI 文档快看").item(
             &PredefinedMenuItem::about(
                 app_handle,
-                Some("About AI Doc QuickLook"),
+                Some("About AI 文档快看"),
                 Some(about_meta()),
             )?,
         );
@@ -368,7 +368,7 @@ fn build_menu_en<R: Runtime>(app_handle: &AppHandle<R>) -> tauri::Result<tauri::
         .separator()
         .item(&PredefinedMenuItem::hide(
             app_handle,
-            Some("Hide AI Doc QuickLook"),
+            Some("Hide AI 文档快看"),
         )?)
         .item(&PredefinedMenuItem::hide_others(
             app_handle,
@@ -379,7 +379,7 @@ fn build_menu_en<R: Runtime>(app_handle: &AppHandle<R>) -> tauri::Result<tauri::
         .separator()
         .item(&PredefinedMenuItem::quit(
             app_handle,
-            Some("Quit AI Doc QuickLook"),
+            Some("Quit AI 文档快看"),
         )?)
         .build()?;
 

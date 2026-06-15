@@ -106,3 +106,36 @@ date: 2026-01-01
 
 Content after real section heading.
 ```
+
+---
+
+## Case 6: Front Matter with Chinese values + table + body HR
+
+Expected: Front Matter is hidden. `# 深圳故事` and `## 第一章` appear in outline. The table renders normally. The `---` between body and table remains an HR.
+
+```markdown
+---
+title: 深圳故事
+subtitle: 城市更新与产业记忆
+author: AI 文档快看
+date: 2026-06-13
+tags:
+  - markdown
+  - test
+---
+
+# 深圳故事
+
+这是一段普通正文。
+
+## 第一章
+
+**这是加粗文字**
+
+---
+
+| 项目 | 内容 |
+| --- | --- |
+| 城市 | 深圳 |
+| 类型 | 故事 |
+```

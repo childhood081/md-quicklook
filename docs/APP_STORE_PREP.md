@@ -1,6 +1,6 @@
 # Mac App Store 上架准备
 
-md-quicklook 上架 Mac App Store 的技术条件与文档准备。
+AI 文档快看上架 Mac App Store 的技术条件与文档准备。
 
 ## Apple Developer Program 前置条件
 
@@ -32,11 +32,11 @@ md-quicklook 上架 Mac App Store 的技术条件与文档准备。
 | Apple Distribution 证书 | 本机 Keychain 存在 | 否 |
 | 3rd Party Mac Developer Installer 证书 | 本机 Keychain 存在 | 否 |
 | Bundle ID | Apple Developer 已注册 `com.mdquicklook.desktop` | 否 |
-| App Store Connect App 记录 | 已创建，App ID `6779720577`，名称 `Markdown 快看` | 否 |
+| App Store Connect App 记录 | 已创建，App ID `6779720577`，名称应保持为 `AI 文档快看` | 否 |
 | Mac App Store provisioning profile | Apple Developer 已生成 `mdquicklook Mac App Store 20260612`，App ID `88Y78WLD7A.com.mdquicklook.desktop`；仍需下载到本地并配置路径 | 是 |
 | App Store Connect API Key | 当前环境变量未设置，未发现 `AuthKey_*.p8` | 是 |
 
-当前结论：**暂不能上传到 App Store Connect / TestFlight**。App Store Connect App 记录和 Bundle ID 已创建；仍需下载匹配 md-quicklook 的 Mac App Store Connect provisioning profile、准备 App Store Connect API Key，并完成签名 `.pkg` 构建。
+当前结论：App Store Connect App 记录和 Bundle ID 已创建。上传 TestFlight 前仍需确认匹配 `com.mdquicklook.desktop` 的 Mac App Store provisioning profile、App Store Connect API Key、签名 `.pkg` 构建和沙盒回归结果。
 
 参考：Tauri 2 官方 App Store 文档要求 App Store 分发前完成 Apple Developer Program、代码签名、App Store Connect App 记录、App Sandbox entitlements、Mac App Store Connect provisioning profile，并将签名 `.pkg` 上传到 App Store Connect。
 
@@ -157,7 +157,7 @@ scripts/build-mac-app-store.sh
 | 导出功能 | 无 | 纯本地生成 |
 | 更新检查 | 无 | 当前版本无自动更新功能 |
 
-**结论**：md-quicklook 是完全离线应用，无任何网络请求。
+**结论**：AI 文档快看是完全离线应用，无任何网络请求。
 如果上架时需要声明，应标记为"无网络访问"。
 
 ## 用户数据收集
@@ -171,7 +171,7 @@ scripts/build-mac-app-store.sh
 | 最近文件列表 | 本地 localStorage | 仅存储在用户本地浏览器数据中 |
 | 语言偏好 | 本地 settings.json | 存储在应用本地配置目录 |
 
-**结论**：md-quicklook 不收集任何用户数据。
+**结论**：AI 文档快看不收集任何用户数据。
 App Store Connect 隐私标签应全部标记为"不收集数据"。
 
 ## 隐私清单与隐私声明
@@ -183,11 +183,7 @@ App Store Connect 隐私标签应全部标记为"不收集数据"。
 
 ### 建议
 
-创建一个简单的隐私政策页面，写明：
-- 应用完全离线运行
-- 不收集任何个人数据
-- 不上传任何文件内容
-- 不包含第三方分析 SDK
+隐私政策正文以根目录 `PRIVACY_POLICY.md` 为准。提交 App Store 前需要将其发布到公开、无需登录即可访问的 URL。
 
 ## 登录 / 账号 / 云同步
 
@@ -204,10 +200,10 @@ App Store Connect 隐私标签应全部标记为"不收集数据"。
 
 | 材料 | 说明 | 准备状态 |
 |------|------|----------|
-| App 名称 | `md-quicklook` | ✅ 已确定 |
-| 副标题 | 如 "Lightweight Markdown Editor" | 待定 |
-| 描述 | 应用功能和特点说明 | 待编写 |
-| 关键词 | 如 "markdown, editor, viewer, preview" | 待定 |
+| App 名称 | `AI 文档快看` | ✅ 已确定 |
+| 副标题 | `轻量 Markdown 阅读与导出工具` / `Lightweight Markdown Viewer` | 待最终确认 |
+| 描述 | 本地 Markdown 阅读、编辑、Word/Excel/PDF 导出；无需账号，不上传用户文件 | 待最终确认 |
+| 关键词 | markdown, editor, viewer, preview, docx, xlsx, pdf | 待最终确认 |
 | 分类 | `Productivity` 或 `Developer Tools` | 待定 |
 | 支持网址 | 如 GitHub Issues 页面 | 待创建 |
 | 隐私政策网址 | 公开可访问的隐私政策页面 | 待创建 |
@@ -221,6 +217,29 @@ App Store Connect 隐私标签应全部标记为"不收集数据"。
 - 分辨率：1280x800、1440x900、2560x1600 或 2880x1800 之一
 - 格式：PNG 或 JPEG
 - 内容：展示应用核心功能（阅读模式、编辑模式、导出功能）
+
+## App Store 元数据草案
+
+### 中文描述方向
+
+AI 文档快看是一款轻量的本地 Markdown 文件阅读与编辑工具。用户可以双击打开 `.md` / `.markdown` 文件，以接近 Word 的阅读样式查看内容，也可以切换到编辑或源码模式进行修改，并支持导出 Word、Excel 和 PDF。文件在本地处理，不需要账号，不上传用户文档。
+
+### 英文描述方向
+
+AI 文档快看 is a lightweight Markdown viewer and editor for local documents. Open `.md` and `.markdown` files quickly, read them in a clean document-style view, switch to editing or source mode when needed, and export content to Word, Excel, or PDF. Files are processed locally, with no account required and no document upload.
+
+### 隐私标签
+
+App Store Connect 隐私标签建议选择：**Data Not Collected / 不收集数据**。
+
+依据：
+
+- 不需要账号；
+- 不上传用户文件；
+- 不使用广告；
+- 不使用分析 SDK；
+- 不使用第三方崩溃报告 SDK；
+- 文件仅在本地处理或保存到用户选择的位置。
 
 ## 当前合规状态
 
@@ -296,14 +315,14 @@ scripts/build-mac-app-store.sh
 输出：
 
 ```text
-src-tauri/target/appstore/pkg/md-quicklook_<marketing-version>_<build-number>_appstore.pkg
+src-tauri/target/appstore/pkg/AI 文档快看_<marketing-version>_<build-number>_appstore.pkg
 ```
 
 上传到 App Store Connect / TestFlight 需满足所有前置条件后手动执行：
 
 ```bash
 xcrun altool --upload-app --type macos \
-  --file "src-tauri/target/appstore/pkg/md-quicklook_1.0.0_1_appstore.pkg" \
+  --file "src-tauri/target/appstore/pkg/AI 文档快看_1.0.0_1_appstore.pkg" \
   --apiKey "$APPLE_API_KEY_ID" \
   --apiIssuer "$APPLE_API_ISSUER"
 ```
