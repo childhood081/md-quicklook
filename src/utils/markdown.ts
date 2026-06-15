@@ -342,18 +342,72 @@ export function removeEmptyMarkdownHeadings(content: string): string {
     .join('\n')
 }
 
+/**
+ * Strip loose metadata lines from the top of the content.
+ *
+ * Loose metadata are `key: value` lines at the very start of a Markdown
+ * file WITHOUT `---` Front Matter delimiters.  Many AI models generate
+ * this style, and the values are often empty (e.g. `title:` alone).
+ *
+ * Only the **known** Front Matter keys are recognised as metadata:
+ * `title`, `subtitle`, `author`, `date`, `tags`.
+ *
+ * Lines like `项目: 深圳故事` in the body are left alone because:
+ * 1. They don't use a known key.
+ * 2. Even if they did, stripping stops at the first non-metadata line.
+ */
+function stripLooseMetadata(content: string): string {
+  const LINES = normalizeLineEndings(content).split('\n')
+  let i = 0
+
+  // Skip leading blank lines
+  while (i < LINES.length && LINES[i].trim() === '') i++
+
+  // Consume consecutive known-metadata-key lines (value may be empty).
+  // Stopping condition: line does NOT match `KnownKey: optional-value`.
+  while (i < LINES.length) {
+    const m = LINES[i].match(/^([A-Za-z][A-Za-z0-9_-]*)\s*:\s*(.*)$/)
+    if (!m) break
+    const key = m[1].trim()
+    if (!supportedFrontMatterFields.has(key)) break
+    i++
+  }
+
+  // Skip blank lines between metadata block and real content
+  while (i < LINES.length && LINES[i].trim() === '') i++
+
+  return LINES.slice(i).join('\n')
+}
+
+/**
+ * Extract the meaningful Markdown body for rendering / outline / export.
+ *
+ * Processing order:
+ * 1. Strip YAML Front Matter (`---` … `---`)
+ * 2. If no FM found, strip loose metadata (`Key: value` at the top)
+ * 3. Remove empty heading lines (`# `, `## `, …)
+ *
+ * This is the **single entry point** every consumer should use.
+ */
+export function getMarkdownBody(content: string): string {
+  const parsed = parseFrontMatter(content)
+  const body = parsed.hasFrontMatter ? parsed.body : stripLooseMetadata(content)
+  return removeEmptyMarkdownHeadings(body)
+}
+
 export function normalizeMarkdownForRender(content: string): string {
-  return removeEmptyMarkdownHeadings(stripFrontMatterForRender(content))
+  return getMarkdownBody(content)
 }
 
 export function getMarkdownHeadings(content: string): { level: number; text: string; line: number }[] {
-  const parsed = parseFrontMatter(content)
-  const lines = parsed.body.split('\n')
+  const body = getMarkdownBody(content)
+  const lines = body.split('\n')
   const result: { level: number; text: string; line: number }[] = []
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i]
-    if (isEmptyMarkdownHeadingLine(line)) continue
+    // Skip empty lines (empty headings already removed by getMarkdownBody)
+    if (line.trim() === '') continue
 
     const match = line.match(/^(#{1,6})\s+(.+)$/)
     const text = match?.[2]?.trim()
@@ -362,7 +416,7 @@ export function getMarkdownHeadings(content: string): { level: number; text: str
     result.push({
       level: match[1].length,
       text,
-      line: parsed.bodyStartLine + i,
+      line: i,
     })
   }
 

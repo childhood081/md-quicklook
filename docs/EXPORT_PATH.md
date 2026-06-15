@@ -6,13 +6,16 @@ When exporting to Word (.docx) or Excel (.xlsx), md-quicklook prompts the user w
 
 ## How It Works
 
-1. The export function generates the file bytes (Word document or Excel workbook)
+1. The export function validates whether the current document can be exported.
+   - Word: any opened Markdown document can be exported.
+   - Excel: only table-only Markdown documents are accepted.
 2. A native save dialog opens with:
    - A suggested filename based on the current Markdown file name
    - A file type filter matching the export format
 3. The user chooses a save location and filename
-4. The bytes are written atomically to the chosen path (temp file → rename)
-5. A success toast shows the exported filename
+4. The file bytes are generated after the path is selected.
+5. The bytes are written atomically to the chosen path (temp file → rename)
+6. A success toast shows the exported filename
 
 ### User Cancellation
 
@@ -54,6 +57,7 @@ const savePath = await save({
   filters: [{ name: 'Word Document', extensions: ['docx'] }],
 })
 if (!savePath) throw new Error('Export cancelled')
+const bytes = await generateDocxBytes(currentContent.value)
 await invoke('export_docx', { outputPath: savePath, bytes: Array.from(bytes) })
 ```
 
