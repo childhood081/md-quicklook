@@ -153,6 +153,7 @@ export APPSTORE_MARKETING_VERSION
 export APPSTORE_BUILD_NUMBER
 export APPSTORE_PROVISION_PROFILE
 export APPLE_SIGNING_IDENTITY
+export APP_NAME
 export CONFIG_PATH
 export ENTITLEMENTS_PATH
 
@@ -163,6 +164,7 @@ const configPath = process.env.CONFIG_PATH
 const entitlementsPath = process.env.ENTITLEMENTS_PATH
 const teamId = process.env.APPLE_TEAM_ID
 const bundleId = process.env.APPSTORE_BUNDLE_IDENTIFIER
+const appName = process.env.APP_NAME
 const appIdentifier = `${teamId}.${bundleId}`
 const baseConfigPath = path.join(path.dirname(configPath), 'tauri.conf.json')
 
@@ -193,6 +195,7 @@ const config = JSON.parse(fs.readFileSync(baseConfigPath, 'utf8'))
 
 config.identifier = process.env.APPSTORE_BUNDLE_IDENTIFIER
 config.version = process.env.APPSTORE_MARKETING_VERSION
+config.productName = appName
 
 config.build = {
   ...(config.build ?? {}),
@@ -236,6 +239,8 @@ cd "${ROOT_DIR}" || fail "Cannot enter project root: ${ROOT_DIR}"
 run_or_fail npm run build
 run_or_fail cargo check --manifest-path "${SRC_TAURI_DIR}/Cargo.toml"
 
+rm -rf "${APP_BUNDLE_PATH}" || fail "Cannot remove old app bundle: ${APP_BUNDLE_PATH}"
+
 if [ -n "${TARGET}" ]; then
   run_or_fail npx tauri build --no-bundle --target "${TARGET}"
   run_or_fail npx tauri bundle --bundles app --target "${TARGET}" --config "${CONFIG_PATH}"
@@ -246,6 +251,22 @@ fi
 
 if [ ! -d "${APP_BUNDLE_PATH}" ]; then
   fail "Expected App Store app bundle not found: ${APP_BUNDLE_PATH}"
+fi
+
+BUNDLE_IDENTIFIER="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "${APP_BUNDLE_PATH}/Contents/Info.plist" 2>/dev/null || true)"
+BUNDLE_SHORT_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "${APP_BUNDLE_PATH}/Contents/Info.plist" 2>/dev/null || true)"
+BUNDLE_VERSION="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "${APP_BUNDLE_PATH}/Contents/Info.plist" 2>/dev/null || true)"
+
+if [ "${BUNDLE_IDENTIFIER}" != "${APPSTORE_BUNDLE_IDENTIFIER}" ]; then
+  fail "App bundle identifier (${BUNDLE_IDENTIFIER}) does not match expected identifier (${APPSTORE_BUNDLE_IDENTIFIER})"
+fi
+
+if [ "${BUNDLE_SHORT_VERSION}" != "${APPSTORE_MARKETING_VERSION}" ]; then
+  fail "App bundle marketing version (${BUNDLE_SHORT_VERSION}) does not match expected version (${APPSTORE_MARKETING_VERSION})"
+fi
+
+if [ "${BUNDLE_VERSION}" != "${APPSTORE_BUILD_NUMBER}" ]; then
+  fail "App bundle build number (${BUNDLE_VERSION}) does not match expected build number (${APPSTORE_BUILD_NUMBER})"
 fi
 
 rm -rf "${STAGING_DIR}" || fail "Cannot remove old staging directory: ${STAGING_DIR}"

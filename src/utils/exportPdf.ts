@@ -32,11 +32,22 @@ import {
   contentMaxWidth,
 } from './documentExportTheme'
 
+const PRINT_CLEANUP_DELAY_MS = 30_000
+
+function escapeHtmlText(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 /**
  * Build a self-contained HTML document that mirrors the reading mode
  * visual design, ready for system print → Save as PDF.
  */
-async function buildPrintHtml(markdown: string): Promise<string> {
+async function buildPrintHtml(markdown: string, title = 'export.pdf'): Promise<string> {
   // Render markdown and apply Shiki highlighting
   const container = document.createElement('div')
   container.innerHTML = renderMarkdown(markdown)
@@ -188,6 +199,7 @@ async function buildPrintHtml(markdown: string): Promise<string> {
 <html>
 <head>
   <meta charset="UTF-8">
+  <title>${escapeHtmlText(title)}</title>
   <style>${readerCss}</style>
   <style>${printCss}</style>
 </head>
@@ -207,7 +219,7 @@ async function buildPrintHtml(markdown: string): Promise<string> {
  * Supported on macOS (Save as PDF in print dialog) and
  * Windows (Microsoft Print to PDF).
  */
-export async function exportPdf(markdown: string): Promise<void> {
+export async function exportPdf(markdown: string, suggestedFileName?: string): Promise<void> {
   const iframe = document.createElement('iframe')
   iframe.style.position = 'fixed'
   iframe.style.top = '0'
@@ -221,8 +233,15 @@ export async function exportPdf(markdown: string): Promise<void> {
   document.body.appendChild(iframe)
 
   return new Promise<void>((resolve, reject) => {
+    let settled = false
+    let cleanupTimer: ReturnType<typeof setTimeout> | null = null
+
     const cleanup = () => {
       try {
+        if (cleanupTimer) {
+          clearTimeout(cleanupTimer)
+          cleanupTimer = null
+        }
         if (iframe.parentNode) {
           iframe.parentNode.removeChild(iframe)
         }
@@ -231,50 +250,63 @@ export async function exportPdf(markdown: string): Promise<void> {
       }
     }
 
+    const resolveOnce = () => {
+      if (settled) return
+      settled = true
+      resolve()
+    }
+
+    const rejectOnce = (err: Error) => {
+      if (settled) return
+      settled = true
+      cleanup()
+      reject(err)
+    }
+
     iframe.onload = () => {
       try {
         const win = iframe.contentWindow
         if (!win) {
-          cleanup()
-          reject(new Error('Could not access print window'))
+          rejectOnce(new Error('Could not access print window'))
           return
         }
 
-        // Listen for print completion
+        // Best-effort cleanup if the WebView reports print completion.
         win.addEventListener('afterprint', () => {
           cleanup()
-          resolve()
+          resolveOnce()
         }, { once: true })
 
-        // Firefox uses matchMedia for print detection
+        // Some engines report print dialog state through matchMedia.
         const mediaQuery = win.matchMedia('print')
         if ('addEventListener' in mediaQuery) {
           mediaQuery.addEventListener('change', (e) => {
             if (!e.matches) {
-              // Print dialog closed
               cleanup()
-              resolve()
+              resolveOnce()
             }
           }, { once: true })
         }
 
-        // Trigger print after a small delay to ensure rendering
+        // Trigger print after a small delay to ensure rendering.
+        // Tauri/WebView does not reliably fire afterprint, so resolve once
+        // the print dialog has been requested instead of blocking the toolbar.
         setTimeout(() => {
           win.print()
+          cleanupTimer = setTimeout(cleanup, PRINT_CLEANUP_DELAY_MS)
+          resolveOnce()
         }, 100)
       } catch (err) {
-        cleanup()
-        reject(err instanceof Error ? err : new Error(String(err)))
+        rejectOnce(err instanceof Error ? err : new Error(String(err)))
       }
     }
 
     iframe.onerror = () => {
-      cleanup()
-      reject(new Error('Failed to load print document'))
+      rejectOnce(new Error('Failed to load print document'))
     }
 
     // Build the HTML and write to iframe
-    buildPrintHtml(markdown)
+    buildPrintHtml(markdown, suggestedFileName)
       .then((html) => {
         const doc = iframe.contentDocument || iframe.contentWindow?.document
         if (doc) {
@@ -282,13 +314,11 @@ export async function exportPdf(markdown: string): Promise<void> {
           doc.write(html)
           doc.close()
         } else {
-          cleanup()
-          reject(new Error('Could not access print document'))
+          rejectOnce(new Error('Could not access print document'))
         }
       })
       .catch((err) => {
-        cleanup()
-        reject(err)
+        rejectOnce(err instanceof Error ? err : new Error(String(err)))
       })
   })
 }

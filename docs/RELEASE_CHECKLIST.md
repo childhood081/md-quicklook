@@ -1,6 +1,6 @@
 # Release Checklist
 
-md-quicklook 发布前验证清单。
+AI 文档快看发布前验证清单。
 
 ## 每次发布前必检
 
@@ -44,9 +44,9 @@ v1.9.0-beta
 
 ### macOS 验证
 
-- [ ] `md-quicklook.app` 可正常启动
+- [ ] `AI 文档快看.app` 可正常启动
 - [ ] `.dmg` 可正常挂载和安装到 `/Applications`
-- [ ] `.dmg` 内包含 `md-quicklook.app`
+- [ ] `.dmg` 内包含 `AI 文档快看.app`
 - [ ] `.dmg` 内包含 `Applications` 快捷方式
 - [ ] 未签名 .app 的 Gatekeeper 绕过路径已验证
 - [ ] `.md` 文件关联正常（右键 → Open with）

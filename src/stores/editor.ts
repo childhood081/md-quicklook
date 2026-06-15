@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { save } from '@tauri-apps/plugin-dialog'
-import { generateXlsxBytes } from '../utils/exportExcel'
+import { generateXlsxBytes, isTableOnlyMarkdown } from '../utils/exportExcel'
 import { generateDocxBytes } from '../utils/exportDocx'
 import { exportPdf } from '../utils/exportPdf'
 import {
@@ -250,13 +250,16 @@ export const useEditorStore = defineStore('editor', () => {
     if (!filePath.value) {
       throw new Error(i18n.global.t('error.needOpenFile'))
     }
-    const bytes = await generateXlsxBytes(currentContent.value, fileName.value)
+    if (!isTableOnlyMarkdown(currentContent.value)) {
+      throw new Error(i18n.global.t('export.notTableOnly'))
+    }
     const savePath = await save({
       title: i18n.global.t('dialog.exportExcelTitle'),
       defaultPath: defaultExportName('xlsx'),
       filters: [{ name: i18n.global.t('dialog.excelFilter'), extensions: ['xlsx'] }],
     })
     if (!savePath) throw new Error(i18n.global.t('export.exportCancelled'))
+    const bytes = await generateXlsxBytes(currentContent.value, fileName.value)
     await invoke('export_xlsx', { outputPath: savePath, bytes: Array.from(bytes) })
     return savePath
   }
@@ -265,20 +268,20 @@ export const useEditorStore = defineStore('editor', () => {
     if (!filePath.value) {
       throw new Error(i18n.global.t('error.needOpenFile'))
     }
-    await exportPdf(currentContent.value)
+    await exportPdf(currentContent.value, defaultExportName('pdf'))
   }
 
   async function exportToWord(): Promise<string> {
     if (!filePath.value) {
       throw new Error(i18n.global.t('error.needOpenFile'))
     }
-    const bytes = await generateDocxBytes(currentContent.value)
     const savePath = await save({
       title: i18n.global.t('dialog.exportWordTitle'),
       defaultPath: defaultExportName('docx'),
       filters: [{ name: i18n.global.t('dialog.wordFilter'), extensions: ['docx'] }],
     })
     if (!savePath) throw new Error(i18n.global.t('export.exportCancelled'))
+    const bytes = await generateDocxBytes(currentContent.value)
     await invoke('export_docx', { outputPath: savePath, bytes: Array.from(bytes) })
     return savePath
   }
