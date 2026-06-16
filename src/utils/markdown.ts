@@ -37,6 +37,25 @@ const loadedLangs = new Set<string>()
 
 const supportedFrontMatterFields = new Set(['title', 'subtitle', 'date', 'author', 'tags'])
 
+/**
+ * Recognised loose-metadata keys (English + Chinese).
+ *
+ * Only these keys are stripped from the leading metadata block.
+ * Body lines like `李明：你终于回来了。` are NOT in this set, so
+ * dialogue lines and prose `Note: …` are never consumed.
+ */
+const knownLooseMetadataKeys = new Set([
+  // English
+  'title', 'subtitle', 'author', 'date', 'tags',
+  'type', 'style', 'theme', 'producer', 'production',
+  'episode', 'episodes',
+  // Chinese
+  '标题', '副标题', '作者', '日期', '标签',
+  '类型', '风格', '集数', '出品', '出品方',
+  '制作', '制作方', '主题曲', '主题曲基调',
+  '简介', '摘要', '编剧', '导演', '主演',
+])
+
 async function ensureLang(lang: string) {
   const hl = await getHighlighter()
   if (!loadedLangs.has(lang)) {
@@ -345,36 +364,51 @@ export function removeEmptyMarkdownHeadings(content: string): string {
 /**
  * Strip loose metadata lines from the top of the content.
  *
- * Loose metadata are `key: value` lines at the very start of a Markdown
- * file WITHOUT `---` Front Matter delimiters.  Many AI models generate
- * this style, and the values are often empty (e.g. `title:` alone).
+ * Loose metadata are `Key: value` / `键：值` lines at the very start
+ * of a Markdown file WITHOUT `---` Front Matter delimiters.  Many AI
+ * models generate this style (often with Chinese keys and empty values).
  *
- * Only the **known** Front Matter keys are recognised as metadata:
- * `title`, `subtitle`, `author`, `date`, `tags`.
+ * ## What is recognised
  *
- * Lines like `项目: 深圳故事` in the body are left alone because:
- * 1. They don't use a known key.
- * 2. Even if they did, stripping stops at the first non-metadata line.
+ * - English keys: `title`, `subtitle`, `type`, `episodes`, …
+ * - Chinese keys: `集数`, `出品`, `类型`, `主题曲基调`, …
+ * - English colon `:` and Chinese full-width colon `：`
+ * - Value may be empty (e.g. `title:` alone)
+ *
+ * ## Stopping rules (metadata block ends)
+ *
+ * 1. Line does not match `KnownKey[:：] optional-value` → block ends
+ * 2. Key is NOT in the known set → block ends (prevents `李明：` dialogs
+ *    and `项目: 深圳故事` prose from being swallowed)
+ * 3. Blank line after at least one metadata line → block ends
+ *
+ * The scan is **only** at the top of the document; body content is
+ * never inspected.
  */
 function stripLooseMetadata(content: string): string {
   const LINES = normalizeLineEndings(content).split('\n')
   let i = 0
+  let consumedAny = false
 
   // Skip leading blank lines
   while (i < LINES.length && LINES[i].trim() === '') i++
 
   // Consume consecutive known-metadata-key lines (value may be empty).
-  // Stopping condition: line does NOT match `KnownKey: optional-value`.
+  // Supports both English keys (title) and Chinese keys (标题).
+  // Supports both `:` (U+003A) and `：` (U+FF1A).
   while (i < LINES.length) {
-    const m = LINES[i].match(/^([A-Za-z][A-Za-z0-9_-]*)\s*:\s*(.*)$/)
+    const m = LINES[i].match(/^([A-Za-z\u4e00-\u9fff][A-Za-z0-9_\-·\u4e00-\u9fff]*)\s*[:：]\s*(.*)$/)
     if (!m) break
     const key = m[1].trim()
-    if (!supportedFrontMatterFields.has(key)) break
+    if (!knownLooseMetadataKeys.has(key)) break
+    consumedAny = true
     i++
   }
 
-  // Skip blank lines between metadata block and real content
-  while (i < LINES.length && LINES[i].trim() === '') i++
+  // If we consumed metadata, skip trailing blank lines before real content.
+  if (consumedAny) {
+    while (i < LINES.length && LINES[i].trim() === '') i++
+  }
 
   return LINES.slice(i).join('\n')
 }

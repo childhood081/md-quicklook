@@ -139,3 +139,26 @@ tags:
 | 城市 | 深圳 |
 | 类型 | 故事 |
 ```
+
+---
+
+## Case 7: Loose Chinese metadata with Chinese colons
+
+Expected: All leading metadata lines (English + Chinese keys, `:` and `：`) are hidden. `# 第一集` appears as H1 in reading/outline. `李明：` and `陈雨：` dialogue lines are PRESERVED as body text.
+
+```markdown
+title: 《山水有归期》完整剧本
+subtitle: 两个湖南人的深圳故事
+集数：共20集（完整版）
+出品：广东尚佳文创信息科技有限公司 x 虾滑AI工作室
+类型：都市情感 / 文旅创业 / 家庭励志
+风格：甜宠轻喜剧 + 家庭情感 + 正剧质感
+主题曲基调：参考《漠河舞厅》风格——深情、克制、带有岁月感
+
+# 第一集
+
+正文开始。
+
+李明：你终于回来了。
+陈雨：我一直都在。
+```
