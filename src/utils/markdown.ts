@@ -40,7 +40,7 @@ const supportedFrontMatterFields = new Set(['title', 'subtitle', 'date', 'author
 /**
  * Recognised loose-metadata keys (English + Chinese).
  *
- * Only these keys are stripped from the leading metadata block.
+ * Only these keys are consumed from the leading metadata block.
  * Body lines like `李明：你终于回来了。` are NOT in this set, so
  * dialogue lines and prose `Note: …` are never consumed.
  */
@@ -362,40 +362,44 @@ export function removeEmptyMarkdownHeadings(content: string): string {
 }
 
 /**
- * Strip loose metadata lines from the top of the content.
+ * Transforms loose metadata lines at the top of the content into visible
+ * Markdown so values are preserved in reading / outline / export.
  *
  * Loose metadata are `Key: value` / `键：值` lines at the very start
  * of a Markdown file WITHOUT `---` Front Matter delimiters.  Many AI
- * models generate this style (often with Chinese keys and empty values).
+ * models generate this style.
  *
- * ## What is recognised
+ * ## Conversion rules
  *
- * - English keys: `title`, `subtitle`, `type`, `episodes`, …
- * - Chinese keys: `集数`, `出品`, `类型`, `主题曲基调`, …
- * - English colon `:` and Chinese full-width colon `：`
- * - Value may be empty (e.g. `title:` alone)
+ * | Key(s)            | Output          |
+ * |-------------------|-----------------|
+ * | title / 标题       | `# value`       |
+ * | subtitle / 副标题  | `> value`       |
+ * | other known keys   | `key：value`    |
+ * | empty value        | skipped         |
  *
- * ## Stopping rules (metadata block ends)
+ * ## Stopping rules
  *
  * 1. Line does not match `KnownKey[:：] optional-value` → block ends
- * 2. Key is NOT in the known set → block ends (prevents `李明：` dialogs
- *    and `项目: 深圳故事` prose from being swallowed)
- * 3. Blank line after at least one metadata line → block ends
+ * 2. Key is NOT in `knownLooseMetadataKeys` → block ends
+ * 3. Blank line after consuming ≥1 metadata line → block ends
  *
- * The scan is **only** at the top of the document; body content is
- * never inspected.
+ * ## Safety
+ *
+ * - `李明：你终于回来了。` — `李明` is NOT a known key → not consumed
+ * - Only scans the document top; body content is never inspected
  */
-function stripLooseMetadata(content: string): string {
+function transformLooseMetadataToMarkdown(content: string): string {
   const LINES = normalizeLineEndings(content).split('\n')
   let i = 0
-  let consumedAny = false
 
   // Skip leading blank lines
   while (i < LINES.length && LINES[i].trim() === '') i++
 
+  const converted: string[] = []
+  let consumedAny = false
+
   // Consume consecutive known-metadata-key lines (value may be empty).
-  // Supports both English keys (title) and Chinese keys (标题).
-  // Supports both `:` (U+003A) and `：` (U+FF1A).
   while (i < LINES.length) {
     const m = LINES[i].match(/^([A-Za-z\u4e00-\u9fff][A-Za-z0-9_\-·\u4e00-\u9fff]*)\s*[:：]\s*(.*)$/)
     if (!m) break
@@ -403,29 +407,45 @@ function stripLooseMetadata(content: string): string {
     if (!knownLooseMetadataKeys.has(key)) break
     consumedAny = true
     i++
+
+    const value = m[2].trim()
+    if (!value) continue // empty value → skip
+
+    // Convert to visible Markdown
+    if (key === 'title' || key === '标题') {
+      converted.push(`# ${value}`)
+    } else if (key === 'subtitle' || key === '副标题') {
+      converted.push(`> ${value}`)
+    } else {
+      const isChineseKey = /[\u4e00-\u9fff]/.test(key)
+      const colon = isChineseKey ? '：' : ': '
+      converted.push(`${key}${colon}${value}`)
+    }
   }
 
-  // If we consumed metadata, skip trailing blank lines before real content.
-  if (consumedAny) {
-    while (i < LINES.length && LINES[i].trim() === '') i++
-  }
+  if (!consumedAny) return content
 
-  return LINES.slice(i).join('\n')
+  // Skip blank lines between metadata block and real content
+  while (i < LINES.length && LINES[i].trim() === '') i++
+
+  const rest = LINES.slice(i).join('\n')
+  if (converted.length === 0) return rest
+  return converted.join('\n\n') + (rest ? '\n\n' + rest : '')
 }
 
 /**
  * Extract the meaningful Markdown body for rendering / outline / export.
  *
  * Processing order:
- * 1. Strip YAML Front Matter (`---` … `---`)
- * 2. If no FM found, strip loose metadata (`Key: value` at the top)
+ * 1. Strip YAML Front Matter (`---` … `---`) — values remain hidden
+ * 2. If no FM found, transform loose metadata into visible Markdown
  * 3. Remove empty heading lines (`# `, `## `, …)
  *
  * This is the **single entry point** every consumer should use.
  */
 export function getMarkdownBody(content: string): string {
   const parsed = parseFrontMatter(content)
-  const body = parsed.hasFrontMatter ? parsed.body : stripLooseMetadata(content)
+  const body = parsed.hasFrontMatter ? parsed.body : transformLooseMetadataToMarkdown(content)
   return removeEmptyMarkdownHeadings(body)
 }
 

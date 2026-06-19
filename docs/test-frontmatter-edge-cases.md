@@ -142,9 +142,9 @@ tags:
 
 ---
 
-## Case 7: Loose Chinese metadata with Chinese colons
+## Case 7: Loose Chinese metadata — values rendered as visible content
 
-Expected: All leading metadata lines (English + Chinese keys, `:` and `：`) are hidden. `# 第一集` appears as H1 in reading/outline. `李明：` and `陈雨：` dialogue lines are PRESERVED as body text.
+Expected: Metadata values are VISIBLE in reading mode. `title` → H1, `subtitle` → blockquote, other keys → `key：value` paragraphs. `# 第一集` is the second H1. `李明：` / `陈雨：` dialogue lines PRESERVED.
 
 ```markdown
 title: 《山水有归期》完整剧本
@@ -162,3 +162,37 @@ subtitle: 两个湖南人的深圳故事
 李明：你终于回来了。
 陈雨：我一直都在。
 ```
+
+验收：
+1. 阅读模式显示 `# 《山水有归期》完整剧本` 作为 H1
+2. 阅读模式显示 `> 两个湖南人的深圳故事` 作为 blockquote
+3. 阅读模式显示 `集数：共20集（完整版）` 等 metadata 值
+4. 阅读模式显示 `# 第一集` 作为 H1
+5. 阅读模式显示正文
+6. 阅读模式保留 `李明：` `陈雨：` 台词
+7. 不显示英文 `title:` `subtitle:` 标签
+8. 目录包含"《山水有归期》完整剧本"和"第一集"
+9. Word/PDF 导出包含 metadata 值
+10. 源码模式保留原文不变
+
+---
+
+## Case 8: Loose metadata empty values — hidden
+
+Expected: `title:` and `subtitle:` with empty values generate NO output. Only `# 第一集` and body are visible.
+
+```markdown
+title:
+subtitle:
+
+# 第一集
+
+正文开始。
+```
+
+验收：
+1. 不显示 title
+2. 不显示 subtitle
+3. 显示 `# 第一集` 作为 H1
+4. 显示正文
+5. 目录只包含"第一集"
