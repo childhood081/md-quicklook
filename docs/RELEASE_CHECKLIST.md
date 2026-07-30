@@ -6,15 +6,15 @@ AI 文档快看发布前验证清单。
 
 ## 当前发布状态
 
-- 当前建议对外标记为 `v1.9.0-beta`。
-- `tauri.conf.json` / `Cargo.toml` 可继续使用 `1.9.0` 作为内部构建版本。
+- 普通 DMG / Windows 渠道继续使用 `1.9.0` 内部版本线，并对外标记为 `v1.9.0-beta`。
+- Mac App Store 渠道使用营销版本 `1.0.0`；构建版本 `23` 已通过审核，当前等待开发者手动发布。
 - macOS beta 包未签名、未公证，只适合小范围测试。
-- Windows 安装包尚未在真实 Windows 环境构建和验证。
-- Mac App Store 尚未上架，App Store Sandbox / entitlements / 审核材料未完成。
+- Windows 安装包可由 GitHub Actions 构建，但尚未完成真实 Windows 安装、文件关联和卸载验收。
+- App Store Connect App ID 为 `6779720577`，Bundle ID 保持 `com.mdquicklook.desktop`。
 
 ## 版本命名建议
 
-当前配置中的 `1.9.0` 已经被 Tauri 和 Cargo 接受，也会进入 macOS bundle metadata。发布沟通建议使用：
+仓库配置中的 `1.9.0` 用于普通 DMG 和 Windows 包；App Store 构建脚本通过临时配置生成独立的营销版本和递增 build number。直接分发沟通使用：
 
 ```text
 v1.9.0-beta
@@ -26,7 +26,7 @@ v1.9.0-beta
 - 能明确告诉测试用户这是 beta，而不是正式版。
 - 保留现有 V1.4-V1.9 的内部迭代编号，方便和项目历史对应。
 
-如果后续决定改为 `1.0.0-beta.1`，需要同步修改：
+不要为了匹配 App Store 的 `1.0.0` 直接修改 Windows `productName` 或 Bundle ID。若未来统一仓库版本，需要同步修改：
 
 - `package.json` 的 `version`
 - `src-tauri/Cargo.toml` 的 `package.version`
@@ -98,11 +98,12 @@ v1.9.0-beta
 
 ## App Store 准备（如适用）
 
-- [ ] entitlements.plist 已配置
-- [ ] App Sandbox 文件读写已验证
-- [ ] App Store Connect 元数据已准备
-- [ ] 截图已更新
-- [ ] 隐私政策 URL 可访问
+- [x] App Store 专用 entitlements 已配置
+- [x] App Sandbox 签名包已构建并通过 TestFlight / App Review
+- [x] App Store Connect 元数据已准备
+- [x] 截图已上传
+- [x] `1.0.0 (23)` 已通过审核
+- [ ] 开发者确认后手动发布版本
 
 ## 文档
 

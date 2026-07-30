@@ -32,11 +32,13 @@ scripts/build-macos-dmg.sh
 
 | 产物 | 路径 |
 |------|------|
-| .app (Intel) | `src-tauri/target/release/bundle/macos/AI 文档快看.app` |
-| .app (Apple Silicon) | `src-tauri/target/release/bundle/macos/AI 文档快看.app` |
-| .dmg (Intel) | `src-tauri/target/release/bundle/dmg/AI 文档快看_1.9.0_x64.dmg` |
-| .dmg (Apple Silicon) | `src-tauri/target/release/bundle/dmg/AI 文档快看_1.9.0_aarch64.dmg` |
-| .dmg (Universal) | `src-tauri/target/release/bundle/dmg/AI 文档快看_1.9.0_universal.dmg` |
+| 普通 .app | `src-tauri/target/release/bundle/macos/md-quicklook.app` |
+| 普通 .dmg (Apple Silicon) | `src-tauri/target/release/bundle/dmg/md-quicklook_1.9.0_aarch64.dmg` |
+| App Store .app (Universal) | `src-tauri/target/universal-apple-darwin/release/bundle/macos/AI 文档快看.app` |
+| App Store .pkg | `src-tauri/target/appstore/pkg/AI 文档快看_<version>_<build>_appstore.pkg` |
+
+普通构建保留 ASCII `productName` 以兼容 Windows WiX/NSIS；生成的 macOS
+`Info.plist` 仍将 `CFBundleDisplayName` 和 `CFBundleName` 设置为“AI 文档快看”。
 
 ## 架构策略
 
@@ -212,11 +214,12 @@ xcrun stapler staple "AI 文档快看_1.9.0_aarch64.dmg"
 
 | 项目 | 状态 |
 |------|------|
-| Apple Developer Program | **未注册** |
-| Developer ID 签名证书 | **无** |
+| Apple Developer Program | **已可用** |
+| Mac App Store 签名证书 | **已配置并用于 build 23** |
 | Notarization | **未执行** |
 | 可进行未签名测试分发 | **是（需手动绕过 Gatekeeper）** |
-| 当前发布标记 | **v1.9.0-beta** |
+| 直接分发标记 | **v1.9.0-beta** |
+| Mac App Store | **1.0.0 (23) 已审核通过，等待手动发布** |
 | 自动 create-dmg | **当前 macOS 16 beta 环境存在兼容风险** |
 | hdiutil 脚本化 DMG | **已支持：scripts/build-macos-dmg.sh** |
 

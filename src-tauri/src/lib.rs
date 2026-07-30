@@ -249,6 +249,23 @@ fn export_docx(output_path: String, bytes: Vec<u8>) -> Result<String, String> {
 }
 
 #[tauri::command]
+fn print_webview(window: tauri::WebviewWindow) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        return window
+            .print()
+            .map_err(|e| format!("Failed to open print dialog: {}", e));
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        window
+            .eval("window.print()")
+            .map_err(|e| format!("Failed to open print dialog: {}", e))
+    }
+}
+
+#[tauri::command]
 fn initial_file(state: tauri::State<'_, AppState>) -> Option<String> {
     state.initial_file.lock().ok().and_then(|path| path.clone())
 }
@@ -419,6 +436,7 @@ pub fn run() {
             create_backup,
             export_xlsx,
             export_docx,
+            print_webview,
             initial_file,
             switch_language,
             get_language,

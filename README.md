@@ -6,13 +6,14 @@ AI 文档快看是一个轻量、离线、原生桌面的文档查看与导出�
 
 ## Release Status
 
-Current package status: **v1.9.0 beta**.
+Current package status:
 
-- macOS Apple Silicon `.app` and beta `.dmg` can be built locally.
+- Direct-download packages use the internal `1.9.0` version line and remain beta builds.
+- Mac App Store version `1.0.0 (23)` has passed review and is waiting for manual developer release.
+- macOS Apple Silicon `.app` and beta `.dmg` build successfully from `main`.
 - The current macOS beta `.dmg` is **unsigned and not notarized**.
-- Windows packaging configuration exists, but the Windows installer has **not been verified on a real Windows machine**.
-- AI 文档快看 is **not listed on the Mac App Store**.
-- Treat current packages as small-scope beta test builds, not a final public release.
+- Windows installer artifacts build in GitHub Actions, but installation still needs final verification on a real Windows machine.
+- The App Store version is not public until the developer clicks **Release This Version** in App Store Connect.
 
 ## Features
 
@@ -145,9 +146,9 @@ md-quicklook path/to/file.md
 
 ## Current Limitations
 
-- Current 1.9.0 packages are beta builds; macOS packages are unsigned and not notarized
-- Windows installer has not yet been verified on a real Windows machine
-- App Store distribution is not configured
+- Direct-download 1.9.0 packages are beta builds; their macOS packages are unsigned and not notarized
+- The Windows installer has not yet completed final installation and uninstall verification on a real Windows machine
+- Mac App Store `1.0.0 (23)` is approved and waiting for manual developer release
 - **Single file** at a time — no tab support yet
 - File association opens files through startup CLI args. Already-running app file-forwarding is platform dependent and should use a Tauri 2 compatible event/plugin path if expanded later.
 - **No dark mode** for the reader view yet

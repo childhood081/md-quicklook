@@ -70,7 +70,7 @@
 
 ### Windows 分发
 - 未签名的 NSIS 安装程序会触发 SmartScreen 警告
-- Windows 安装包尚未在真实 Windows 机器上构建和验证
+- Windows 安装包可由 GitHub Actions 生成，但尚未在真实 Windows 机器上完成最终安装、文件关联和卸载验证
 - 仅支持 `currentUser` 安装模式（单用户），企业部署可能需要 perMachine
 - 当前无 WiX (.msi) 输出，仅 NSIS (.exe) 安装程序
 - 卸载后用户数据（settings.json、最近文件）不会自动清理
@@ -78,15 +78,16 @@
 - Windows 上原子写入使用额外的 rollback 机制，极端磁盘故障下可能丢失数据
 
 ### Mac App Store
-- 未通过 Mac App Store 审核
-- App Sandbox 未配置和验证
+- App Store 版本 `1.0.0 (23)` 已通过审核，当前等待开发者手动发布
+- App Store 专用构建已启用 App Sandbox，并使用 `com.apple.security.files.user-selected.read-write`
 - 自动保存的 security-scoped bookmark 适配未实现
-- 需要独立的 App Store Bundle ID 和 entitlements 配置
+- App Store 与直接分发继续共用已注册的 Bundle ID `com.mdquicklook.desktop`
+- 最近文件跨进程再次访问仍取决于 macOS 沙盒授权；失败时用户需要通过系统文件选择器重新选择文件
 
 ### 代码签名
-- macOS：无 Developer ID 签名，无 Notarization
+- Mac App Store 包使用 Apple Distribution / Installer 证书签名
+- 直接下载 DMG：无 Developer ID 签名，无 Notarization
 - Windows：无代码签名证书
-- 两个平台均以未签名状态构建
 
 ### 自动更新
 - 当前版本无自动更新功能
