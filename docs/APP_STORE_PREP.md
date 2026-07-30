@@ -20,7 +20,7 @@ AI 文档快看上架 Mac App Store 的技术条件与文档准备。
    - 在 https://appstoreconnect.apple.com 创建 App 记录
    - 需要 Bundle ID 与 App 记录匹配
 
-## 当前本机检查结果（2026-06-12）
+## 当前状态（2026-07-30）
 
 | 检查项 | 当前结果 | 是否阻断上传 |
 |--------|----------|--------------|
@@ -28,15 +28,16 @@ AI 文档快看上架 Mac App Store 的技术条件与文档准备。
 | `xcodebuild` | 通过 `/Applications/Xcode.app/Contents/Developer` 可用 | 否 |
 | `altool` | Xcode 内存在 `altool` | 否 |
 | `productbuild` | 可用 | 否 |
-| Transporter | `/Applications/Transporter.app` 存在 | 上传方式待定 |
+| Transporter | `/Applications/Transporter.app` 已用于上传 build 23 | 否 |
 | Apple Distribution 证书 | 本机 Keychain 存在 | 否 |
 | 3rd Party Mac Developer Installer 证书 | 本机 Keychain 存在 | 否 |
 | Bundle ID | Apple Developer 已注册 `com.mdquicklook.desktop` | 否 |
 | App Store Connect App 记录 | 已创建，App ID `6779720577`，名称应保持为 `AI 文档快看` | 否 |
-| Mac App Store provisioning profile | Apple Developer 已生成 `mdquicklook Mac App Store 20260612`，App ID `88Y78WLD7A.com.mdquicklook.desktop`；仍需下载到本地并配置路径 | 是 |
-| App Store Connect API Key | 当前环境变量未设置，未发现 `AuthKey_*.p8` | 是 |
+| Mac App Store provisioning profile | 已使用匹配 `88Y78WLD7A.com.mdquicklook.desktop` 的 profile 构建 | 否 |
+| App Store 构建 | `1.0.0 (23)` 已上传并通过 App Review | 否 |
+| 发布方式 | 手动发布；当前状态为“等待开发者发布” | 需要开发者最终确认 |
 
-当前结论：App Store Connect App 记录和 Bundle ID 已创建。上传 TestFlight 前仍需确认匹配 `com.mdquicklook.desktop` 的 Mac App Store provisioning profile、App Store Connect API Key、签名 `.pkg` 构建和沙盒回归结果。
+当前结论：App Store Connect App 记录、签名、沙盒包、元数据和审核均已完成。版本尚未公开，最终发布动作仍保留为人工确认。
 
 参考：Tauri 2 官方 App Store 文档要求 App Store 分发前完成 Apple Developer Program、代码签名、App Store Connect App 记录、App Sandbox entitlements、Mac App Store Connect provisioning profile，并将签名 `.pkg` 上传到 App Store Connect。
 
@@ -201,15 +202,13 @@ App Store Connect 隐私标签应全部标记为"不收集数据"。
 | 材料 | 说明 | 准备状态 |
 |------|------|----------|
 | App 名称 | `AI 文档快看` | ✅ 已确定 |
-| 副标题 | `轻量 Markdown 阅读与导出工具` / `Lightweight Markdown Viewer` | 待最终确认 |
-| 描述 | 本地 Markdown 阅读、编辑、Word/Excel/PDF 导出；无需账号，不上传用户文件 | 待最终确认 |
-| 关键词 | markdown, editor, viewer, preview, docx, xlsx, pdf | 待最终确认 |
-| 分类 | `Productivity` 或 `Developer Tools` | 待定 |
-| 支持网址 | 如 GitHub Issues 页面 | 待创建 |
-| 隐私政策网址 | 公开可访问的隐私政策页面 | 待创建 |
-| 截图 | 6.5" / 12.9" Mac 截图（至少 1 组） | 待截取 |
+| 副标题 / 描述 / 关键词 | 已填写并通过审核 | ✅ |
+| 分类 | 已在 App Store Connect 配置 | ✅ |
+| 支持网址 | `https://github.com/childhood081/md-quicklook/issues` | ✅ |
+| 隐私政策网址 | 已在 App Store Connect 配置并通过审核 | ✅ |
+| 截图 | Mac 截图已上传并通过审核 | ✅ |
 | 图标 | 1024x1024 PNG | ✅ 已有 `icon.png` |
-| 版本号 | `1.9.0` | ✅ 已设置 |
+| App Store 版本号 | `1.0.0 (23)` | ✅ 已审核通过 |
 
 ### App Store 截图要求
 
@@ -245,29 +244,27 @@ App Store Connect 隐私标签建议选择：**Data Not Collected / 不收集数
 
 | 检查项 | 状态 | 备注 |
 |--------|------|------|
-| Bundle ID | ✅ | `com.mdquicklook.desktop`（直接分发） |
-| 版本号 | ✅ | `1.9.0` |
+| Bundle ID | ✅ | `com.mdquicklook.desktop` |
+| App Store 版本号 | ✅ | `1.0.0 (23)` |
 | 图标 | ✅ | `icon.icns` + `icon.png` (1024x1024) |
-| App Sandbox | ⚠️ | App Store entitlements 已准备，尚未在沙盒签名包中验证 |
-| Entitlements | ⚠️ | `src-tauri/entitlements/app-store.plist` 已新增 |
+| App Sandbox | ✅ | 签名包启用了 App Sandbox，并已通过审核 |
+| Entitlements | ✅ | App Store 构建脚本生成并签入用户选择文件读写权限 |
 | 网络访问声明 | ✅ | 无网络访问 |
 | 数据收集声明 | ✅ | 无数据收集 |
-| 隐私政策 | ❌ | 需创建页面 |
-| 截图 | ❌ | 需截取 |
-| Apple Developer Program | ⚠️ | 本机存在证书，但账号/App Store Connect 可用性未确认 |
-| App Store Connect 记录 | ❌ | 需创建或确认 |
-| 签名证书 | ⚠️ | 本机存在 Apple Distribution 和 Installer 证书 |
-| Provisioning profile | ⚠️ | Apple Developer 已生成匹配 profile，但需下载到本机 |
-| Xcode Archive 验证 | ❌ | 需在 Xcode 中验证 |
+| 隐私政策 | ✅ | 已在 App Store Connect 配置并通过审核 |
+| 截图 | ✅ | 已上传并通过审核 |
+| Apple Developer Program | ✅ | 账号和证书可用 |
+| App Store Connect 记录 | ✅ | App ID `6779720577` |
+| 签名证书 | ✅ | Apple Distribution 与 Installer 签名成功 |
+| Provisioning profile | ✅ | build 23 使用匹配 profile |
+| App Review | ✅ | build 23 已通过审核 |
 
 ## 当前缺口
 
-1. **下载 provisioning profile** — Apple Developer 已生成 `mdquicklook Mac App Store 20260612`，需要下载 `.provisionprofile` 到本机
-2. **App Store Connect API Key** — 需 Issuer ID、Key ID、`AuthKey_<KEY_ID>.p8`
-3. **沙盒验证** — 启用 App Sandbox 后需完整验证打开、保存、`.bak`、Word/Excel 导出
-4. **Security-Scoped Bookmarks** — 最近文件和跨会话自动保存可能需要适配
-5. **隐私政策页面** — 需要一个公开 URL
-6. **截图与元数据** — 需要最终审核并上传
+1. **手动发布确认** — App Store Connect 正在等待开发者发布，尚未公开。
+2. **Security-Scoped Bookmarks** — 最近文件跨进程访问仍可能要求用户重新选择文件。
+3. **直接下载签名** — 普通 DMG 仍未使用 Developer ID 签名和公证。
+4. **Windows 真机验收** — CI 可构建，但仍需真实 Windows 安装、关联和卸载测试。
 
 ## 上架前仍需人工完成的事项
 
@@ -296,7 +293,7 @@ scripts/build-mac-app-store.sh
 ```bash
 export APPSTORE_BUNDLE_IDENTIFIER=com.mdquicklook.desktop
 export APPSTORE_MARKETING_VERSION=1.0.0
-export APPSTORE_BUILD_NUMBER=1
+export APPSTORE_BUILD_NUMBER=<next-build-number>
 export APPLE_TEAM_ID=88Y78WLD7A
 export APPLE_SIGNING_IDENTITY=EDC962A1E55F41C70B15CC5CC009E32E6A21C50A
 export MAC_INSTALLER_SIGNING_IDENTITY=E0A5EC494A3584AE79065A08688507531F6CF8AE
@@ -322,12 +319,12 @@ src-tauri/target/appstore/pkg/AI 文档快看_<marketing-version>_<build-number>
 
 ```bash
 xcrun altool --upload-app --type macos \
-  --file "src-tauri/target/appstore/pkg/AI 文档快看_1.0.0_1_appstore.pkg" \
+  --file "src-tauri/target/appstore/pkg/AI 文档快看_1.0.0_<build-number>_appstore.pkg" \
   --apiKey "$APPLE_API_KEY_ID" \
   --apiIssuer "$APPLE_API_ISSUER"
 ```
 
-上传成功后只等待 Apple 处理 build，不要提交 App Review。
+每次上传必须递增 `APPSTORE_BUILD_NUMBER`。当前已审核版本是 build 23；只有修复需要替换已审核二进制时才构建 build 24 或更高版本。
 
 ## 不上架 Mac App Store 的替代方案
 
