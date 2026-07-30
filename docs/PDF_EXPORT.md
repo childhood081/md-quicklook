@@ -6,9 +6,9 @@ AI 文档快看的 PDF 导出使用 **系统打印对话框** 方案：
 
 1. 前端使用 `renderMarkdown()` + `highlightCodeBlocks()` 生成与阅读模式完全一致的 HTML
 2. 构建自包含 HTML 文档，嵌入阅读模式 CSS 和打印 CSS
-3. 在隐藏 `<iframe>` 中加载该文档
+3. 在当前 WebView 中创建临时的打印专用内容区域
 4. 使用当前 Markdown 文件名设置打印文档标题，作为系统保存 PDF 时的默认文件名提示
-5. 调用 `iframe.contentWindow.print()` 打开系统打印对话框
+5. 通过 Tauri 当前窗口调用系统原生打印对话框
 6. 前端导出状态在打印对话框打开后恢复；用户在系统打印窗口中选择"保存为 PDF"和保存路径完成导出
 
 ### 为什么不使用 Puppeteer/Playwright
@@ -17,11 +17,11 @@ AI 文档快看的 PDF 导出使用 **系统打印对话框** 方案：
 - 不要求用户安装外部命令行工具
 - 系统打印是所有现代操作系统的内置功能
 
-### 为什么使用 iframe 而非弹窗
+### 为什么使用当前 WebView 的打印区域
 
-- iframe 不会产生可见的弹窗闪烁
-- 打印事件回调可用时会自动清理 iframe；若 WebView 不触发回调，则使用延迟兜底清理
-- 与 Tauri WebView 兼容性好
+- macOS 的 WKWebView 可能忽略隐藏、零尺寸 iframe 发起的打印请求
+- 当前方案由主 WebView 的原生打印 API 打开对话框，避免点击后无响应
+- 打印时只显示临时阅读内容；回调可用时立即清理，否则使用延迟兜底清理
 
 ## macOS 上保存为 PDF
 
@@ -56,5 +56,5 @@ macOS 原生打印对话框的"存储为 PDF"功能完整保留所有 CSS 样式
 ## 依赖
 
 - 无外部依赖
-- 使用浏览器内置 `window.print()` API
-- 纯前端实现，不涉及 Rust/Tauri 端
+- macOS 使用 Tauri 当前 `WebviewWindow` 的原生打印 API
+- 其他平台通过当前 WebView 调用 `window.print()`

@@ -1,3 +1,4 @@
+import { invoke } from '@tauri-apps/api/core'
 import { renderMarkdown, highlightCodeBlocks } from './markdown'
 import {
   pageBackground,
@@ -33,6 +34,8 @@ import {
 } from './documentExportTheme'
 
 const PRINT_CLEANUP_DELAY_MS = 30_000
+const PRINT_ROOT_ID = 'md-quicklook-print-root'
+const PRINT_STYLE_ID = 'md-quicklook-print-style'
 
 function escapeHtmlText(value: string): string {
   return value
@@ -212,113 +215,80 @@ async function buildPrintHtml(markdown: string, title = 'export.pdf'): Promise<s
 /**
  * Export the current Markdown content to PDF via the system print dialog.
  *
- * Creates a hidden iframe with a self-contained HTML document that mirrors
- * the reading mode visual design, then triggers window.print(). The user
- * selects "Save as PDF" in their system print dialog.
+ * Creates a temporary print-only view in the current document, then asks the
+ * Tauri window to open the native print dialog. The user selects "Save as PDF"
+ * in their system print dialog.
  *
  * Supported on macOS (Save as PDF in print dialog) and
  * Windows (Microsoft Print to PDF).
  */
 export async function exportPdf(markdown: string, suggestedFileName?: string): Promise<void> {
-  const iframe = document.createElement('iframe')
-  iframe.style.position = 'fixed'
-  iframe.style.top = '0'
-  iframe.style.left = '0'
-  iframe.style.width = '0'
-  iframe.style.height = '0'
-  iframe.style.border = 'none'
-  iframe.style.visibility = 'hidden'
-  iframe.setAttribute('aria-hidden', 'true')
+  document.getElementById(PRINT_ROOT_ID)?.remove()
+  document.getElementById(PRINT_STYLE_ID)?.remove()
 
-  document.body.appendChild(iframe)
+  const html = await buildPrintHtml(markdown, suggestedFileName)
+  const parsed = new DOMParser().parseFromString(html, 'text/html')
+  const sourceStyles = Array.from(parsed.querySelectorAll('style'))
+    .map((style) => style.textContent ?? '')
+    .join('\n')
 
-  return new Promise<void>((resolve, reject) => {
-    let settled = false
-    let cleanupTimer: ReturnType<typeof setTimeout> | null = null
+  const printRoot = document.createElement('div')
+  printRoot.id = PRINT_ROOT_ID
+  printRoot.setAttribute('aria-hidden', 'true')
+  printRoot.style.cssText = [
+    'position:fixed',
+    'left:-100000px',
+    'top:0',
+    'width:794px',
+    'height:1px',
+    'overflow:hidden',
+    'visibility:hidden',
+    'pointer-events:none',
+  ].join(';')
+  printRoot.innerHTML = parsed.body.innerHTML
 
-    const cleanup = () => {
-      try {
-        if (cleanupTimer) {
-          clearTimeout(cleanupTimer)
-          cleanupTimer = null
-        }
-        if (iframe.parentNode) {
-          iframe.parentNode.removeChild(iframe)
-        }
-      } catch {
-        // Ignore cleanup errors
-      }
+  const printStyle = document.createElement('style')
+  printStyle.id = PRINT_STYLE_ID
+  printStyle.media = 'print'
+  printStyle.textContent = `
+    ${sourceStyles}
+
+    body > * {
+      display: none !important;
     }
 
-    const resolveOnce = () => {
-      if (settled) return
-      settled = true
-      resolve()
+    body > #${PRINT_ROOT_ID} {
+      display: block !important;
+      position: static !important;
+      width: auto !important;
+      height: auto !important;
+      overflow: visible !important;
+      visibility: visible !important;
+      pointer-events: auto !important;
     }
+  `
 
-    const rejectOnce = (err: Error) => {
-      if (settled) return
-      settled = true
-      cleanup()
-      reject(err)
+  document.head.appendChild(printStyle)
+  document.body.appendChild(printRoot)
+
+  let cleanupTimer: ReturnType<typeof setTimeout> | null = null
+  const cleanup = () => {
+    if (cleanupTimer) {
+      clearTimeout(cleanupTimer)
+      cleanupTimer = null
     }
+    window.removeEventListener('afterprint', cleanup)
+    printRoot.remove()
+    printStyle.remove()
+  }
 
-    iframe.onload = () => {
-      try {
-        const win = iframe.contentWindow
-        if (!win) {
-          rejectOnce(new Error('Could not access print window'))
-          return
-        }
+  window.addEventListener('afterprint', cleanup, { once: true })
 
-        // Best-effort cleanup if the WebView reports print completion.
-        win.addEventListener('afterprint', () => {
-          cleanup()
-          resolveOnce()
-        }, { once: true })
-
-        // Some engines report print dialog state through matchMedia.
-        const mediaQuery = win.matchMedia('print')
-        if ('addEventListener' in mediaQuery) {
-          mediaQuery.addEventListener('change', (e) => {
-            if (!e.matches) {
-              cleanup()
-              resolveOnce()
-            }
-          }, { once: true })
-        }
-
-        // Trigger print after a small delay to ensure rendering.
-        // Tauri/WebView does not reliably fire afterprint, so resolve once
-        // the print dialog has been requested instead of blocking the toolbar.
-        setTimeout(() => {
-          win.print()
-          cleanupTimer = setTimeout(cleanup, PRINT_CLEANUP_DELAY_MS)
-          resolveOnce()
-        }, 100)
-      } catch (err) {
-        rejectOnce(err instanceof Error ? err : new Error(String(err)))
-      }
-    }
-
-    iframe.onerror = () => {
-      rejectOnce(new Error('Failed to load print document'))
-    }
-
-    // Build the HTML and write to iframe
-    buildPrintHtml(markdown, suggestedFileName)
-      .then((html) => {
-        const doc = iframe.contentDocument || iframe.contentWindow?.document
-        if (doc) {
-          doc.open()
-          doc.write(html)
-          doc.close()
-        } else {
-          rejectOnce(new Error('Could not access print document'))
-        }
-      })
-      .catch((err) => {
-        rejectOnce(err instanceof Error ? err : new Error(String(err)))
-      })
-  })
+  try {
+    await invoke('print_webview')
+    cleanupTimer = setTimeout(cleanup, PRINT_CLEANUP_DELAY_MS)
+  } catch (error) {
+    cleanup()
+    throw error instanceof Error ? error : new Error(String(error))
+  }
 }
