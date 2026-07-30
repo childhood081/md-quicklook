@@ -3,12 +3,13 @@
 set -u
 
 APP_NAME="AI 文档快看"
+TAURI_BUNDLE_NAME="md-quicklook"
 VERSION="1.9.0"
 ARCH="aarch64"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
-APP_PATH="${ROOT_DIR}/src-tauri/target/release/bundle/macos/${APP_NAME}.app"
+APP_PATH="${ROOT_DIR}/src-tauri/target/release/bundle/macos/${TAURI_BUNDLE_NAME}.app"
 DMG_DIR="${ROOT_DIR}/src-tauri/target/release/bundle/dmg"
 DMG_PATH="${DMG_DIR}/${APP_NAME}_${VERSION}_${ARCH}.dmg"
 STAGING_DIR="$(mktemp -d "${TMPDIR:-/tmp}/${APP_NAME}-dmg.XXXXXX")"

@@ -34,6 +34,7 @@ scripts/build-macos-dmg.sh
 |------|------|
 | 普通 .app | `src-tauri/target/release/bundle/macos/md-quicklook.app` |
 | 普通 .dmg (Apple Silicon) | `src-tauri/target/release/bundle/dmg/md-quicklook_1.9.0_aarch64.dmg` |
+| 脚本化 beta .dmg | `src-tauri/target/release/bundle/dmg/AI 文档快看_1.9.0_aarch64.dmg` |
 | App Store .app (Universal) | `src-tauri/target/universal-apple-darwin/release/bundle/macos/AI 文档快看.app` |
 | App Store .pkg | `src-tauri/target/appstore/pkg/AI 文档快看_<version>_<build>_appstore.pkg` |
 
