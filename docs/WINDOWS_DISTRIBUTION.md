@@ -91,38 +91,15 @@ NSIS 安装程序会自动注册以下文件关联：
 ### 安装后双击 .md 行为
 
 1. **未运行时**：双击 .md 启动 AI 文档快看并打开该文件
-2. **已运行时**：双击 .md 通常会启动新实例并通过 CLI args 传入文件路径。
+2. **已运行时**：双击 .md 会把 CLI args 中的文件路径转发给已有窗口，并将窗口恢复、置前。
 
-> 注意：Tauri 2 中不使用旧运行时打开事件处理 Windows 文件关联；当前实现依赖
-> `src-tauri/src/lib.rs` 中的 `find_markdown_file_in_args()`。
+> 注意：Tauri 2 中不使用旧运行时打开事件处理 Windows 文件关联；冷启动依赖
+> `find_markdown_file_in_args()`，已有实例由 `tauri-plugin-single-instance` 转发参数。
 
-### 多实例限制
+### 单实例行为
 
-当前版本**不限制多实例**。用户可以同时打开多个 AI 文档快看窗口。
-每个窗口独立运行，互不影响。
-
-如需限制单实例，可在 `tauri.conf.json` 中配置：
-
-```json
-{
-  "app": {
-    "windows": [
-      {
-        "title": "AI 文档快看"
-      }
-    ]
-  },
-  "plugins": {
-    "deep-link": {
-      "desktop": {
-        "schemes": ["md-quicklook"]
-      }
-    }
-  }
-}
-```
-
-> 单实例限制目前不是需求，保持多实例行为。
+Windows 版本使用 Tauri 2 的 `tauri-plugin-single-instance`。重复启动应用或在资源管理器中
+双击另一个 Markdown 文件时，不创建第二个独立窗口，而是复用已有窗口并打开新文件。
 
 ## 安装测试步骤
 

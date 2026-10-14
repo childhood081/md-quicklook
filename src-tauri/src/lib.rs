@@ -167,22 +167,40 @@ fn canonical_display_path(path: &str) -> String {
         .to_string()
 }
 
-/// Scan all CLI args (skipping flags) to find a .md or .markdown file path.
-fn find_markdown_file_in_args() -> Option<String> {
-    for arg in std::env::args().skip(1) {
+/// Scan process arguments (skipping the executable) for a Markdown file path.
+/// Native paths are handled before URLs because `C:\\...` is otherwise parsed
+/// as a URL with the scheme `c` on Windows.
+fn find_markdown_file<I, S>(args: I, cwd: Option<&Path>) -> Option<String>
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<str>,
+{
+    for arg in args.into_iter().skip(1) {
+        let arg = arg.as_ref();
         if arg.starts_with('-') {
             continue;
         }
-        let path = if let Ok(url) = tauri::Url::parse(&arg) {
-            if url.scheme() != "file" {
-                continue;
+
+        let path = if arg
+            .get(..7)
+            .is_some_and(|prefix| prefix.eq_ignore_ascii_case("file://"))
+        {
+            match tauri::Url::parse(arg)
+                .ok()
+                .and_then(|url| url.to_file_path().ok())
+            {
+                Some(path) => path,
+                None => continue,
             }
-            match url.to_file_path() {
-                Ok(path) => path,
-                Err(_) => continue,
-            }
+        } else if arg.contains("://") {
+            continue;
         } else {
-            PathBuf::from(&arg)
+            let path = PathBuf::from(arg);
+            if path.is_relative() {
+                cwd.map_or(path.clone(), |base| base.join(path))
+            } else {
+                path
+            }
         };
 
         if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
@@ -192,6 +210,68 @@ fn find_markdown_file_in_args() -> Option<String> {
         }
     }
     None
+}
+
+fn find_markdown_file_in_args() -> Option<String> {
+    find_markdown_file(std::env::args(), None)
+}
+
+#[cfg(test)]
+mod argument_tests {
+    use super::*;
+
+    #[test]
+    fn accepts_windows_drive_paths_with_spaces_and_unicode() {
+        let path = r"C:\Users\张三\Documents\示例 文档.md";
+        let result = find_markdown_file(["md-quicklook.exe", path], None);
+
+        assert_eq!(result.as_deref(), Some(path));
+    }
+
+    #[test]
+    fn accepts_file_urls() {
+        let result = find_markdown_file(
+            [
+                "md-quicklook",
+                "file:///Users/example/Documents/%E7%A4%BA%E4%BE%8B%20%E6%96%87%E6%A1%A3.markdown",
+            ],
+            None,
+        );
+
+        assert_eq!(
+            result
+                .as_deref()
+                .and_then(|path| Path::new(path).file_name())
+                .and_then(|name| name.to_str()),
+            Some("示例 文档.markdown")
+        );
+    }
+
+    #[test]
+    fn resolves_relative_paths_from_the_launching_process_directory() {
+        let cwd = Path::new("/example/launch-directory");
+        let result = find_markdown_file(["md-quicklook", "notes/readme.md"], Some(cwd));
+
+        assert_eq!(
+            result,
+            Some(cwd.join("notes/readme.md").to_string_lossy().to_string())
+        );
+    }
+
+    #[test]
+    fn ignores_flags_urls_and_non_markdown_files() {
+        let result = find_markdown_file(
+            [
+                "md-quicklook",
+                "--verbose",
+                "https://example.com/readme.md",
+                "notes.txt",
+            ],
+            None,
+        );
+
+        assert!(result.is_none());
+    }
 }
 
 #[tauri::command]
@@ -310,7 +390,29 @@ pub fn run() {
     let startup_file = find_markdown_file_in_args();
     let startup_file_for_event = startup_file.clone();
 
-    tauri::Builder::default()
+    let builder = tauri::Builder::default();
+
+    // Windows launches the registered application again when a document is
+    // opened from Explorer. Forward that second process's path to the existing
+    // window so cold and warm file-association launches behave the same way.
+    #[cfg(windows)]
+    let builder = builder.plugin(tauri_plugin_single_instance::init(|app, argv, cwd| {
+        let cwd = PathBuf::from(cwd);
+        if let Some(path) = find_markdown_file(argv, Some(&cwd)) {
+            if let Ok(mut initial_file) = app.state::<AppState>().initial_file.lock() {
+                *initial_file = Some(path.clone());
+            }
+            let _ = app.emit("open-file", path);
+        }
+
+        if let Some(window) = app.get_webview_window("main") {
+            let _ = window.unminimize();
+            let _ = window.show();
+            let _ = window.set_focus();
+        }
+    }));
+
+    builder
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .manage(AppState {

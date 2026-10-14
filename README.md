@@ -150,7 +150,7 @@ md-quicklook path/to/file.md
 - The Windows installer has not yet completed final installation and uninstall verification on a real Windows machine
 - Mac App Store `1.0.0 (23)` is approved and waiting for manual developer release
 - **Single file** at a time — no tab support yet
-- File association opens files through startup CLI args. Already-running app file-forwarding is platform dependent and should use a Tauri 2 compatible event/plugin path if expanded later.
+- Windows file association opens files through startup CLI args and forwards later Explorer launches to the existing app window through the Tauri 2 single-instance plugin.
 - **No dark mode** for the reader view yet
 - **Drag-drop** requires the app to be built with Tauri (not in plain browser)
 
