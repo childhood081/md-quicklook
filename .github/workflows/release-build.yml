@@ -16,8 +16,43 @@ on:
           - all
           - macos-only
           - windows-only
+          - windows-installed-test
+      installer_run_id:
+        description: 'Existing Release Build run to test (windows-installed-test only)'
+        required: false
+        default: '38595479570'
 
 jobs:
+  test-installed-windows:
+    name: Windows installed-app test
+    runs-on: windows-latest
+    timeout-minutes: 10
+    if: ${{ github.event.inputs.target == 'windows-installed-test' }}
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: ai-doc-quicklook-windows-installer
+          path: installer
+          run-id: ${{ inputs.installer_run_id }}
+          github-token: ${{ github.token }}
+      - name: Test installed app through Windows Shell
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem installer -Recurse -Filter '*-setup.exe' | Select-Object -First 1
+          if (-not $installer) { throw 'Installer artifact not found' }
+          ./scripts/test-windows-file-association.ps1 -Installer $installer.FullName
+      - name: Upload installed-app test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-file-association-evidence
+          path: ${{ runner.temp }}/file-association-report
+          if-no-files-found: warn
+
   build-macos:
     name: macOS (aarch64)
     runs-on: macos-latest
