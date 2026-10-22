@@ -130,6 +130,21 @@ jobs:
       - name: Tauri build
         run: npx tauri build --target x86_64-pc-windows-msvc
 
+      - name: Test installed file association and stale Open With repair
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem src-tauri/target -Recurse -Filter '*_x64-setup.exe' | Select-Object -First 1
+          if (-not $installer) { throw 'NSIS installer not found' }
+          ./scripts/test-windows-file-association.ps1 -Installer $installer.FullName -CheckRegistration
+
+      - name: Upload installed-app test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-file-association-evidence
+          path: ${{ runner.temp }}/file-association-report
+          if-no-files-found: warn
+
       - name: Upload NSIS installer
         uses: actions/upload-artifact@v4
         with:

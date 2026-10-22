@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.1] - 2026-10-22 (Windows)
+
+- Register an application-specific Markdown ProgID and an explicit executable-based Open With command.
+- Repair this application's stale file-open commands during NSIS upgrades, preserving the user's Windows default-app choice.
+- Add installed-app Windows Shell regression tests with Chinese/space paths and UI evidence.
+- Keep macOS / App Store versions, Bundle ID, document rendering and export behavior unchanged.
+
 ## [1.9.0-beta] — 2026-06-12
 
 ### Distribution & Release

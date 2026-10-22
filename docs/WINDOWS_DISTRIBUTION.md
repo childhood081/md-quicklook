@@ -126,6 +126,45 @@ Windows 版本使用 Tauri 2 的 `tauri-plugin-single-instance`。重复启动�
 4. 对 `.markdown` 文件重复步骤
 5. 应用运行时，再次双击另一个 `.md`，确认文件正确打开
 
+### Windows 1.9.1 默认打开修复
+
+Windows 专用配置位于 `src-tauri/tauri.windows.conf.json`。该配置只把 Windows
+安装包版本设为 1.9.1，保留 `productName: md-quicklook` 和原 Bundle ID；
+macOS / App Store 的版本及配置不变。
+
+文件类型标识改为 `com.mdquicklook.desktop.Markdown`，避免与其他软件的通用
+`Markdown` ProgID 共用注册表项。NSIS 的 `windows/hooks.nsh` 同时注册：
+
+- 文档 ProgID 的 `shell/open/command`。
+- `Applications/md-quicklook.exe` 的打开命令及 `.md` / `.markdown` 支持列表。
+- Windows 设置中使用的 `RegisteredApplications` 和 `Capabilities`。
+
+两种打开命令都明确使用 `"完整程序路径" "%1"`。升级安装会重写本应用的
+可执行文件打开记录；仅在旧 `Markdown` ProgID 仍引用 `md-quicklook.exe` 时
+修复它，不替换其他编辑器的打开命令。安装器不会写入或绕过 Windows 的
+`UserChoice` 默认程序保护；默认选择仍由用户在 Windows 中确认。
+
+`scripts/test-windows-file-association.ps1` 只用于隔离的 Windows 测试机器，
+会真实安装 NSIS 包、预置旧的缺少文件参数的打开记录，并用 Windows Shell
+打开含中文和空格路径的 `.md` / `.markdown`。测试通过 UI Automation 检查
+正文标记，并保留进程命令行、界面文本和截图。Release Build 在安装测试
+通过后才上传可下载的安装包。`windows-installed-test` 选项还可复测旧产物。
+
+若某台机器升级后仍停在欢迎页，使用只读脚本查询真正生效的默认打开命令：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\diagnose-windows-file-association.ps1
+```
+
+报告默认写到桌面的 `AI-Doc-QuickLook-file-association.json`。脚本通过
+`AssocQueryString` 查询实际解析结果，同时列出 UserChoice、旧 ProgID 和
+可执行文件打开项；不改默认程序、不启动文件、不读取 Markdown 内容。
+报告包含安装路径，分享前可遮盖 Windows 用户名。
+
+实现依据：[Microsoft Application Registration](https://learn.microsoft.com/en-us/windows/win32/shell/app-registration)、
+[Tauri NSIS hooks](https://v2.tauri.app/distribute/windows-installer/#extending-the-installer)、
+[项目使用的 Tauri 2.11.2 NSIS 模板](https://github.com/tauri-apps/tauri/blob/tauri-cli-v2.11.2/crates/tauri-bundler/src/bundle/windows/nsis/installer.nsi)。
+
 ### 卸载测试
 
 1. 通过 Windows 设置 → **Apps** → 找到 AI 文档快看 → **Uninstall**
