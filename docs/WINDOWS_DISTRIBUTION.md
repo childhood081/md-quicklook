@@ -165,6 +165,37 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\diagnose-windows-f
 [Tauri NSIS hooks](https://v2.tauri.app/distribute/windows-installer/#extending-the-installer)、
 [项目使用的 Tauri 2.11.2 NSIS 模板](https://github.com/tauri-apps/tauri/blob/tauri-cli-v2.11.2/crates/tauri-bundler/src/bundle/windows/nsis/installer.nsi)。
 
+### 2026-10-23 安装后的回归验证
+
+在 GitHub Windows runner 中，旧的 1.9.0 安装包通过了普通 Shell 冷启动、热启动和
+直接 CLI 打开测试。但预置 `Applications\md-quicklook.exe\shell\open\command`
+仅含程序路径、没有 `%1` 后，重新安装旧包不会修复它。使用 Windows
+`ShellExecuteEx` 的 `SEE_MASK_CLASSKEY` 指定该注册项时，可复现应用停在欢迎页：
+进程命令行只有程序路径，没有所选文档。对应的界面文本和截图也显示“选择文件”。
+
+[旧包对照测试及证据](https://github.com/childhood081/md-quicklook/actions/runs/39893024410)
+中的专项测试失败是预期的复现结果，不代表前三项测试失败。这证明旧注册记录是
+一种可复现原因；是否就是某台用户机器上的原因，仍应以只读诊断报告为准。
+
+专项测试不把 `Applications\...` 临时写成扩展名的默认值，不修改受 Windows
+保护的 `UserChoice`。它直接调用注册类，避免将测试方法本身的问题误判为应用错误。
+
+同一测试脚本在新 1.9.1 NSIS 包上全部通过：
+
+| 场景 | 旧 1.9.0 | 新 1.9.1 |
+| --- | --- | --- |
+| 中文、空格路径的 `.md`，Shell 冷启动 | 正文可见 | 正文可见 |
+| 已运行时打开另一个 `.markdown` | 正文可见 | 正文可见，保持单实例 |
+| 直接 CLI 传入文档路径 | 正文可见 | 正文可见 |
+| 预置缺少 `%1` 的旧应用打开记录，安装后从该记录打开 | 停在欢迎页，命令行无文档路径 | 正文可见，命令行含所选文档 |
+
+[1.9.1 构建、安装回归测试和截图](https://github.com/childhood081/md-quicklook/actions/runs/39893026381)
+对应应用/测试代码提交 `bf5468a`。测试运行于 Windows Server 2025 的 GitHub
+runner，尚不能替代用户实际 Windows 10/11 机器的最终确认。
+
+验收时请使用 `md-quicklook_1.9.1_x64-setup.exe`，在 Windows 默认应用中
+确认 `.md` 和 `.markdown` 均指向该次安装的“AI 文档快看”，退出应用后双击文件。
+
 ### 卸载测试
 
 1. 通过 Windows 设置 → **Apps** → 找到 AI 文档快看 → **Uninstall**
@@ -183,10 +214,10 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\diagnose-windows-f
    - 仅为当前用户安装
    - 如需全局安装（所有用户），改为 `installMode: "perMachine"`，但需要管理员权限
 
-2. **无 .msi 输出**
-   - 当前禁用 WiX，仅生成 NSIS
-   - 企业部署可能需要 .msi 格式
-   - 启用 WiX 需要安装 WiX Toolset
+2. **本轮仅提供 NSIS 安装包**
+   - `tauri build` 实际也可能生成 MSI；`wix: null` 不等于禁用 MSI 打包
+   - 本次升级修复钩子和安装后回归测试仅覆盖 NSIS `.exe`，工作流不提供 MSI 下载
+   - MSI 的注册/升级行为需要另行验证，不能假定它包含 NSIS 钩子的修复
 
 3. **卸载残留**
    - 用户数据（`%APPDATA%/com.mdquicklook.desktop/`）在卸载时不会自动清理
