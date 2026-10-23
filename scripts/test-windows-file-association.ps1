@@ -12,12 +12,38 @@ Add-Type -AssemblyName UIAutomationClient
 Add-Type -AssemblyName UIAutomationTypes
 Add-Type -AssemblyName System.Drawing
 Add-Type @'
+using System;
+using System.ComponentModel;
 using System.Runtime.InteropServices;
-public static class AssociationNotifications {
-  [DllImport("shell32.dll")]
-  public static extern void SHChangeNotify(uint eventId, uint flags, System.IntPtr item1, System.IntPtr item2);
-  public static void Refresh() {
-    SHChangeNotify(0x08000000, 0x1000, System.IntPtr.Zero, System.IntPtr.Zero);
+using Microsoft.Win32;
+public static class RegisteredApplicationLaunch {
+  [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+  private struct ExecuteInfo {
+    public int cbSize;
+    public uint fMask;
+    public IntPtr hwnd;
+    public string lpVerb, lpFile, lpParameters, lpDirectory;
+    public int nShow;
+    public IntPtr hInstApp, lpIDList;
+    public string lpClass;
+    public IntPtr hkeyClass;
+    public uint dwHotKey;
+    public IntPtr hIcon, hProcess;
+  }
+  [DllImport("shell32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+  private static extern bool ShellExecuteEx(ref ExecuteInfo info);
+  public static void OpenWith(string file) {
+    using (var key = Registry.ClassesRoot.OpenSubKey(@"Applications\md-quicklook.exe")) {
+      if (key == null) throw new InvalidOperationException("Application registration missing");
+      var info = new ExecuteInfo {
+        cbSize = Marshal.SizeOf(typeof(ExecuteInfo)),
+        // SEE_MASK_CLASSKEY | SEE_MASK_NOASYNC | SEE_MASK_FLAG_NO_UI
+        fMask = 0x00000503,
+        lpVerb = "open", lpFile = file, nShow = 1,
+        hkeyClass = key.Handle.DangerousGetHandle()
+      };
+      if (!ShellExecuteEx(ref info)) throw new Win32Exception(Marshal.GetLastWin32Error());
+    }
   }
 }
 '@
@@ -87,8 +113,14 @@ try {
     New-Item -Path $key -Force | Out-Null
     Set-Item -Path $key -Value ('"{0}"' -f $executable)
   }
+  Write-Host 'Installing test package...'
   $installation = Start-Process -FilePath (Resolve-Path $Installer) `
-    -ArgumentList "/S /D=$installDirectory" -Wait -PassThru
+    -ArgumentList "/S /D=$installDirectory" -PassThru
+  if (-not $installation.WaitForExit(90000)) {
+    Save-Diagnostics 'installer-timeout'
+    $installation | Stop-Process -Force
+    throw 'Installer did not finish within 90 seconds.'
+  }
   if ($installation.ExitCode -ne 0 -or -not (Test-Path $executable)) {
     throw "Installer failed: exit $($installation.ExitCode)"
   }
@@ -126,21 +158,10 @@ try {
   Start-Process -FilePath $executable -ArgumentList ('"{0}"' -f $first)
   Wait-ForDocument 'direct-cli-launch' 'Cold launch marker 712839'
 
-  & {
-    Stop-TestApp
-    # Exercise the executable-based class independently of the document ProgID.
-    $extensionKey = 'HKCU:\Software\Classes\.md'
-    $original = (Get-Item $extensionKey).GetValue('')
-    try {
-      Set-Item $extensionKey -Value 'Applications\md-quicklook.exe'
-      [AssociationNotifications]::Refresh()
-      Start-Process -FilePath $first
-      Wait-ForDocument 'executable-open-with' 'Cold launch marker 712839'
-    } finally {
-      Set-Item $extensionKey -Value $original
-      [AssociationNotifications]::Refresh()
-    }
-  }
+  Stop-TestApp
+  Write-Host 'Opening through the executable-based application registration...'
+  [RegisteredApplicationLaunch]::OpenWith($first)
+  Wait-ForDocument 'executable-open-with' 'Cold launch marker 712839'
 
   Write-Host 'All installed-app file association tests passed.'
 } finally {
