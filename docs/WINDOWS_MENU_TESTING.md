@@ -2,7 +2,7 @@
 
 本文档用于验证 Windows 原生菜单和前端编辑器行为是否正确联动。macOS 可按同样步骤做回归测试。
 
-本轮目标包为 Windows `1.9.2`（待构建），不是之前的 `1.9.1`。本轮仅安排 Windows 构建 / 验收；Mac、iOS / iPadOS 与商店上传暂不推进。GitHub Actions 使用 `Release Build` 的 `target=windows-only`，不要选择 `all`，不发布正式 Release。
+本轮测试包为 Windows `1.9.2`（已构建并通过 Windows CI 安装回归），不是之前的 `1.9.1`。下载与证据见 [WINDOWS_DISTRIBUTION.md](WINDOWS_DISTRIBUTION.md)。本轮仅安排 Windows 构建 / 验收；Mac、iOS / iPadOS 与商店上传暂不推进。GitHub Actions 使用 `Release Build` 的 `target=windows-only`，不要选择 `all`，不发布正式 Release。
 
 ## 前置条件
 

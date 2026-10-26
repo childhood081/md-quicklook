@@ -2,6 +2,20 @@
 
 Windows 安装包构建与分发指南 — 涵盖 NSIS 安装程序和 .msi 安装包。
 
+## Windows 1.9.2 测试安装包（2026-10-26）
+
+- 下载：[NSIS 安装包 ZIP](https://github.com/childhood081/md-quicklook/actions/runs/40298324220/artifacts/12638859979)（GitHub Actions artifact，可能需要登录，非永久 Release 下载）。
+- 解压后运行 `md-quicklook_1.9.2_x64-setup.exe`。不要使用裸 `md-quicklook.exe` 代替安装器。
+- 构建源码提交：`5a4aa62fd930dca56de676e8bae05ebc3790ba5c`；分支 `fix/windows-1.9.2-document-tabs`，未合并 main，未发布 Release，未运行 Mac 构建。
+- [Windows 构建与原有安装回归](https://github.com/childhood081/md-quicklook/actions/runs/40298324220)：22 项前端状态测试、6 项 Rust 测试、前端构建、Rust 检查、Tauri 构建均通过。
+- [复用同一安装包的标签 / 关闭 / 历史原生回归](https://github.com/childhood081/md-quicklook/actions/runs/40299355333)：测试脚本提交 `d67f443`，仅增加测试，不改变安装包。
+- 实际安装后的 `FileVersion` / `ProductVersion` 均为 `1.9.2`，`ProductName` 保持 `md-quicklook`，应用窗口显示“AI 文档快看”。
+- 安装器 SHA-256：`96f5d74895eff264ab934d241dca98e5f82e0f966414a5671355be577b3fc347`。
+
+原生 CI 验证通过：中文 / 空格路径 Shell 冷启动、运行中打开 `.markdown`、单实例两个标签、关闭第二个标签、关闭最后标签返回欢迎页及历史、历史重开、CLI 打开、可执行文件 Open With 注册打开；打开文件不新增 `.md.bak`。
+
+测试环境是 GitHub Windows Server 2025，不替代用户 Windows 10/11 的最终验收。PDF 打印驱动的建议文件名、Word 自身的 `~$` 锁文件行为和真实文档的连续中文输入仍需在用户机器检查。未签名安装器可能触发 SmartScreen 提示。
+
 ## 构建命令
 
 ### 前置条件
@@ -30,11 +44,10 @@ npx tauri build
 
 | 产物 | 路径 |
 |------|------|
-| .exe | `src-tauri/target/release/bundle/nsis/AI 文档快看_1.9.0_x64-setup.exe` |
-| .msi | 当前未启用 |
+| NSIS .exe | `src-tauri/target/release/bundle/nsis/md-quicklook_1.9.2_x64-setup.exe`（指定 target 时位于 `target/x86_64-pc-windows-msvc/` 下） |
+| .msi | 当前未交付、未做本轮安装回归 |
 
-> 注意：当前配置禁用了 WiX (.msi)，仅生成 NSIS (.exe) 安装程序。
-> 如需 .msi，将 `windows.wix` 从 `null` 改为 `{}`。
+> 当前流水线的全量打包可能生成 WiX MSI，`windows.wix: null` 并不等于禁止 MSI。当前只上传和验证 NSIS EXE，文件关联修复依赖 NSIS hooks，请勿将未验证 MSI 当作本轮交付包。
 
 ## NSIS 配置说明
 
@@ -76,7 +89,7 @@ npx tauri build
   "fileAssociations": [
     {
       "ext": ["md", "markdown"],
-      "name": "Markdown",
+      "name": "com.mdquicklook.desktop.Markdown",
       "description": "Markdown document",
       "role": "Editor"
     }
@@ -94,7 +107,7 @@ NSIS 安装程序会自动注册以下文件关联：
 2. **已运行时**：双击 .md 会把 CLI args 中的文件路径转发给已有窗口，并将窗口恢复、置前。
 
 > 注意：Tauri 2 中不使用旧运行时打开事件处理 Windows 文件关联；冷启动依赖
-> `find_markdown_file_in_args()`，已有实例由 `tauri-plugin-single-instance` 转发参数。
+> `find_markdown_files()` 扫描全部文件参数，启动队列由前端 `initial_files` 读取；已有实例由 `tauri-plugin-single-instance` 转发参数。
 
 ### 单实例行为
 
@@ -105,7 +118,7 @@ Windows 版本使用 Tauri 2 的 `tauri-plugin-single-instance`。重复启动�
 
 ### 全新安装
 
-1. 双击 `AI 文档快看_1.9.0_x64-setup.exe`
+1. 双击 `md-quicklook_1.9.2_x64-setup.exe`
 2. 确认安装路径
 3. 安装完成后：
    - 确认桌面快捷方式存在

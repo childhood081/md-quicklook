@@ -83,7 +83,7 @@
 - 未签名的 NSIS 安装程序会触发 SmartScreen 警告
 - Windows 安装包可由 GitHub Actions 生成，但尚未在真实 Windows 机器上完成最终安装、文件关联和卸载验证
 - 仅支持 `currentUser` 安装模式（单用户），企业部署可能需要 perMachine
-- 当前无 WiX (.msi) 输出，仅 NSIS (.exe) 安装程序
+- 本轮仅交付和安装验证 NSIS (.exe)；全量打包可能生成 MSI，但不作为当前可分发安装包，不能替代带文件关联修复 hooks 的 NSIS 包
 - 卸载后用户数据（settings.json、最近文件）不会自动清理
 - 卸载后 .md/.markdown 文件关联不会自动恢复
 - Windows 上原子写入使用额外的 rollback 机制，极端磁盘故障下可能丢失数据
