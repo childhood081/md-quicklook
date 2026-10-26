@@ -104,6 +104,38 @@ function Wait-ForDocument([string]$Scenario, [string]$Marker) {
   throw "$Scenario did not display the Markdown document within 45 seconds."
 }
 
+function Invoke-AppButton {
+  param([string]$Name, [switch]$Contains)
+  $deadline = (Get-Date).AddSeconds(10)
+  do {
+    try {
+      $process = Get-Process -Name 'md-quicklook' -ErrorAction SilentlyContinue |
+        Where-Object { $_.MainWindowHandle -ne 0 } | Select-Object -First 1
+      if ($process) {
+        $root = [System.Windows.Automation.AutomationElement]::FromHandle($process.MainWindowHandle)
+        $nodes = $root.FindAll(
+          [System.Windows.Automation.TreeScope]::Descendants,
+          [System.Windows.Automation.Condition]::TrueCondition
+        )
+        $button = $nodes | Where-Object {
+          $_.Current.ControlType -eq [System.Windows.Automation.ControlType]::Button -and
+          (($_.Current.Name -eq $Name) -or ($Contains -and $_.Current.Name.Contains($Name)))
+        } | Select-Object -First 1
+        if ($button) {
+          $pattern = $button.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern)
+          $pattern.Invoke()
+          return
+        }
+      }
+    } catch {
+      # The WebView can briefly replace its tree while a tab is closing.
+    }
+    Start-Sleep -Milliseconds 250
+  } while ((Get-Date) -lt $deadline)
+  Save-Diagnostics 'button-not-found'
+  throw "Unable to invoke application button: $Name"
+}
+
 try {
   Stop-TestApp
   # Reproduce stale executable-based Open With records left by earlier
@@ -124,6 +156,9 @@ try {
   if ($installation.ExitCode -ne 0 -or -not (Test-Path $executable)) {
     throw "Installer failed: exit $($installation.ExitCode)"
   }
+  (Get-Item $executable).VersionInfo |
+    Select-Object ProductName, FileVersion, ProductVersion |
+    ConvertTo-Json | Set-Content (Join-Path $ReportDirectory 'installed-version.json')
 
   $associations = foreach ($extension in @('.md', '.markdown')) {
     $key = Get-Item "Registry::HKEY_CLASSES_ROOT\$extension"
@@ -154,6 +189,27 @@ try {
     throw 'Warm launch created more than one app process.'
   }
 
+  $firstName = [System.IO.Path]::GetFileName($first)
+  $secondName = [System.IO.Path]::GetFileName($second)
+  $openText = Get-AppText
+  if (-not $openText.Contains($firstName) -or -not $openText.Contains($secondName)) {
+    Save-Diagnostics 'document-tabs-missing'
+    throw 'Both documents must remain open as tabs in the same window.'
+  }
+  Save-Diagnostics 'document-tabs-open'
+  foreach ($path in @($first, $second)) {
+    if (Test-Path -LiteralPath "$path.bak") { throw "Opening a document created an unwanted backup: $path.bak" }
+  }
+
+  Invoke-AppButton -Name "关闭 $secondName"
+  Wait-ForDocument 'close-second-tab' 'Cold launch marker 712839'
+  Invoke-AppButton -Name "关闭 $firstName"
+  Wait-ForDocument 'close-last-tab-welcome' '最近文件'
+  if (-not (Get-AppText).Contains('选择文件')) { throw 'Closing the last document did not return to the welcome page.' }
+  if (@(Get-Process -Name 'md-quicklook').Count -ne 1) { throw 'Closing the last tab exited the app.' }
+  Invoke-AppButton -Name $firstName -Contains
+  Wait-ForDocument 'reopen-recent-document' 'Cold launch marker 712839'
+
   Stop-TestApp
   Start-Process -FilePath $executable -ArgumentList ('"{0}"' -f $first)
   Wait-ForDocument 'direct-cli-launch' 'Cold launch marker 712839'
@@ -163,7 +219,7 @@ try {
   [RegisteredApplicationLaunch]::OpenWith($first)
   Wait-ForDocument 'executable-open-with' 'Cold launch marker 712839'
 
-  Write-Host 'All installed-app file association tests passed.'
+  Write-Host 'All installed-app file association, document tab and close/history tests passed.'
 } finally {
   Stop-TestApp
 }
