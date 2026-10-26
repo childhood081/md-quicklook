@@ -26,6 +26,12 @@ export default {
     exporting: '导出中',
   },
 
+  tabs: {
+    label: '打开的文档',
+    open: '打开文件',
+    close: '关闭 {name}',
+  },
+
   // ── Save status ──
   save: {
     idle: '',
@@ -94,6 +100,7 @@ export default {
     pdfInstruction: '请在系统打印窗口中选择"保存为 PDF"',
     pdfFailed: 'PDF 导出失败',
     pdfUnsupported: '当前环境暂不支持直接导出 PDF',
+    printInProgress: '打印窗口尚未关闭，请先完成或取消当前 PDF 导出',
   },
 
   // ── Rich editor toolbar ──
@@ -178,6 +185,7 @@ export default {
     readFailed: '读取文件失败',
     manualSaveFailed: '手动保存失败',
     autoSaveFailed: '自动保存失败',
+    destinationOpen: '目标文件已在其他标签页打开，请切换到该标签页保存，避免覆盖',
   },
 
   // ── Help ──

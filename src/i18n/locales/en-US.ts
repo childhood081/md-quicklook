@@ -26,6 +26,12 @@ export default {
     exporting: 'Exporting',
   },
 
+  tabs: {
+    label: 'Open documents',
+    open: 'Open files',
+    close: 'Close {name}',
+  },
+
   // ── Save status ──
   save: {
     idle: '',
@@ -94,6 +100,7 @@ export default {
     pdfInstruction: 'Please choose "Save as PDF" in the system print dialog',
     pdfFailed: 'PDF export failed',
     pdfUnsupported: 'Direct PDF export is not supported in the current environment',
+    printInProgress: 'Finish or cancel the current PDF print dialog before exporting again.',
   },
 
   // ── Rich editor toolbar ──
@@ -178,6 +185,7 @@ export default {
     readFailed: 'Failed to read file',
     manualSaveFailed: 'Manual save failed',
     autoSaveFailed: 'Auto-save failed',
+    destinationOpen: 'The destination is open in another tab. Switch to that tab to save without overwriting it.',
   },
 
   // ── Help ──

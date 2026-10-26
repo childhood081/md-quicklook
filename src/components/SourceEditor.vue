@@ -3,7 +3,7 @@ import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { EditorView, keymap, placeholder } from '@codemirror/view'
 import { Compartment, EditorState } from '@codemirror/state'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
-import { defaultKeymap, redo, selectAll, undo } from '@codemirror/commands'
+import { defaultKeymap, history, historyKeymap, redo, selectAll, undo } from '@codemirror/commands'
 import { openSearchPanel, search, searchKeymap } from '@codemirror/search'
 import { oneDark } from '@codemirror/theme-one-dark'
 import { useEditorStore } from '../stores/editor'
@@ -11,6 +11,8 @@ import { i18n } from '../i18n'
 import { registerEditorCommandHandler, type EditorCommand } from '../utils/editorCommands'
 
 const store = useEditorStore()
+const documentId = store.activeDocumentId
+const boundDocument = store.documents.find((doc) => doc.id === documentId)
 const containerRef = ref<HTMLDivElement>()
 let view: EditorView | null = null
 let syncFromStore = false
@@ -52,12 +54,13 @@ function createEditor() {
   const extensions = [
     markdown({ base: markdownLanguage }),
     oneDark,
+    history(),
     search(),
     placeholderCompartment.of(placeholder(i18n.global.t('source.placeholder'))),
-    keymap.of([...searchKeymap, ...defaultKeymap]),
+    keymap.of([...historyKeymap, ...searchKeymap, ...defaultKeymap]),
     EditorView.updateListener.of((update) => {
       if (update.docChanged && !syncFromStore) {
-        store.setContent(update.state.doc.toString())
+        store.setContent(update.state.doc.toString(), documentId)
       }
     }),
     EditorView.theme({
@@ -67,7 +70,7 @@ function createEditor() {
   ]
 
   const state = EditorState.create({
-    doc: store.currentContent,
+    doc: boundDocument?.currentContent ?? '',
     extensions,
   })
 
@@ -80,7 +83,7 @@ function createEditor() {
 }
 
 // Watch for external content changes (e.g. when file is loaded)
-watch(() => store.currentContent, (newContent) => {
+watch(() => boundDocument?.currentContent ?? '', (newContent) => {
   if (view && newContent !== view.state.doc.toString()) {
     syncFromStore = true
     view.dispatch({

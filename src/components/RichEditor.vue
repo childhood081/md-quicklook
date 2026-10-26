@@ -1,22 +1,40 @@
 <script setup lang="ts">
-import { defineComponent, h, onUnmounted, shallowRef, ref, watch } from 'vue'
+import { defineComponent, h, onBeforeUnmount, onUnmounted, shallowRef, ref, watch } from 'vue'
 import { Milkdown, MilkdownProvider, useEditor } from '@milkdown/vue'
 import type { UseEditorReturn } from '@milkdown/vue'
-import { Editor, rootCtx, defaultValueCtx, editorViewCtx } from '@milkdown/kit/core'
+import { Editor, rootCtx, defaultValueCtx, editorViewCtx, serializerCtx } from '@milkdown/kit/core'
 import { commonmark } from '@milkdown/kit/preset/commonmark'
 import { gfm } from '@milkdown/kit/preset/gfm'
 import { history, redoCommand, undoCommand } from '@milkdown/kit/plugin/history'
 import { listener, listenerCtx } from '@milkdown/kit/plugin/listener'
 import { useEditorStore } from '../stores/editor'
 import { callCommand, replaceAll } from '@milkdown/utils'
-import { registerEditorCommandHandler, type EditorCommand } from '../utils/editorCommands'
+import { flushEditorChanges, registerEditorCommandHandler, registerEditorFlushHandler, type EditorCommand } from '../utils/editorCommands'
+import { parseFrontMatter } from '../utils/markdown'
+import type { Node as ProseNode } from '@milkdown/kit/prose/model'
 
 const store = useEditorStore()
+const documentId = store.activeDocumentId
+const boundDocument = store.documents.find((doc) => doc.id === documentId)
 
 // Tracks the last markdown synced FROM the editor, to avoid echo loops
-const lastEditorContent = ref(store.currentContent)
+const lastEditorContent = ref(boundDocument?.currentContent ?? '')
 const activeEditor = shallowRef<UseEditorReturn | null>(null)
 let unregisterCommandHandler: (() => void) | null = null
+let unregisterFlushHandler: (() => void) | null = null
+let lastSyncedDoc: ProseNode | null = null
+let metadataPrefix = ''
+
+function editorBody(content: string): string {
+  const parsed = parseFrontMatter(content)
+  const lines = content.match(/[^\n]*\n|[^\n]+$/g) ?? []
+  metadataPrefix = parsed.hasFrontMatter ? lines.slice(0, parsed.bodyStartLine).join('') : ''
+  return content.slice(metadataPrefix.length)
+}
+
+function withMetadata(markdown: string): string {
+  return metadataPrefix + (metadataPrefix && !metadataPrefix.endsWith('\n') ? '\n' : '') + markdown
+}
 
 function execBrowserEditCommand(command: 'cut' | 'copy' | 'paste' | 'selectAll'): boolean {
   activeEditor.value?.get()?.action((ctx) => {
@@ -58,10 +76,15 @@ const MilkdownEditor = defineComponent({
       return Editor.make()
         .config((ctx) => {
           ctx.set(rootCtx, root)
-          ctx.set(defaultValueCtx, store.currentContent)
-          ctx.get(listenerCtx).markdownUpdated((_, markdown) => {
-            lastEditorContent.value = markdown
-            store.setContent(markdown)
+          ctx.set(defaultValueCtx, editorBody(boundDocument?.currentContent ?? ''))
+          ctx.get(listenerCtx).mounted((ctx) => {
+            lastSyncedDoc = ctx.get(editorViewCtx).state.doc
+          })
+          ctx.get(listenerCtx).markdownUpdated((ctx, markdown) => {
+            lastSyncedDoc = ctx.get(editorViewCtx).state.doc
+            const content = withMetadata(markdown)
+            lastEditorContent.value = content
+            store.setContent(content, documentId)
           })
         })
         .use(commonmark)
@@ -72,21 +95,34 @@ const MilkdownEditor = defineComponent({
 
     activeEditor.value = editorRef
     unregisterCommandHandler = registerEditorCommandHandler(handleEditorCommand)
+    unregisterFlushHandler = registerEditorFlushHandler(() => {
+      editorRef.get()?.action((ctx) => {
+        const doc = ctx.get(editorViewCtx).state.doc
+        if (!lastSyncedDoc || lastSyncedDoc.eq(doc)) return
+        lastSyncedDoc = doc
+        const content = withMetadata(ctx.get(serializerCtx)(doc))
+        lastEditorContent.value = content
+        store.setContent(content, documentId)
+      })
+    })
 
     // Sync store → editor when content changes externally (file load, mode switch from source)
     watch(
-      () => store.currentContent,
+      () => boundDocument?.currentContent ?? '',
       (newContent) => {
         if (newContent === lastEditorContent.value) return
         lastEditorContent.value = newContent
         const editor = editorRef.get()
         if (editor) {
-          editor.action(replaceAll(newContent))
+          editor.action(replaceAll(editorBody(newContent)))
+          editor.action((ctx) => { lastSyncedDoc = ctx.get(editorViewCtx).state.doc })
         }
       })
 
+    onBeforeUnmount(flushEditorChanges)
     onUnmounted(() => {
       unregisterCommandHandler?.()
+      unregisterFlushHandler?.()
       if (activeEditor.value === editorRef) {
         activeEditor.value = null
       }
@@ -379,6 +415,7 @@ function insertTableCommand() {
 
 /* ── ProseMirror cursor / selection ── */
 .editor-paper-wrapper .milkdown .ProseMirror {
+  white-space: pre-wrap;
   outline: none;
   min-height: 300px;
 }

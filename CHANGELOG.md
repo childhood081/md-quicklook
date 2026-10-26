@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.9.2] - Windows test candidate (not yet distributed)
+
+- Stop creating `.md.bak` on open and manual save on Windows and macOS; existing backups are not deleted.
+- Add same-window document tabs, multi-file selection/drop/CLI opening, duplicate-path detection, independent saves, and close-to-recent-files behavior.
+- Flush the rich editor before switching, saving, closing or exporting so its delayed updates cannot lose the final keystrokes; retain raw Front Matter separately.
+- Enable CodeMirror history commands; keep editor command handlers bound to their own document.
+- Drain startup file events after frontend listeners register, without the previous fixed-delay reopen.
+- Use the current document name as the PDF print title and restore the app title afterward; connect the native PDF menu action.
+- Keep Word/Excel exports bound to the initiating document even if the active tab changes during a save dialog. Word owner files (`~$...docx`) are created by Word, not by this application's exporter.
+- Add document/save regression tests and browser UI smoke checks; do not change Bundle ID, Windows productName or mobile releases.
+- Increment only `tauri.windows.conf.json` to 1.9.2. Windows installer build and native acceptance are pending; do not treat shared-code changes as a new macOS or mobile release.
+
 ## [1.9.1] - 2026-10-22 (Windows)
 
 - Register an application-specific Markdown ProgID and an explicit executable-based Open With command.

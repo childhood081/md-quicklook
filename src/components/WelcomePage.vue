@@ -1,35 +1,18 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useEditorStore } from '../stores/editor'
 import { useToast } from '../composables/useToast'
-import { open } from '@tauri-apps/plugin-dialog'
-import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow'
+import { documentName } from '../stores/documentWorkspace'
+
+defineProps<{ isDragOver: boolean }>()
+defineEmits<{ open: [] }>()
 
 const store = useEditorStore()
 const { error: showError, warning: showWarning } = useToast()
 const { t } = useI18n()
 
-const isDragOver = ref(false)
-const recentFiles = ref<string[]>(loadRecentFiles())
-let unlistenDragDrop: (() => void) | null = null
-
-function loadRecentFiles(): string[] {
-  try {
-    const raw = localStorage.getItem('md-quicklook-recent')
-    return raw ? JSON.parse(raw) : []
-  } catch {
-    return []
-  }
-}
-
-function addRecentFile(path: string) {
-  const files = loadRecentFiles().filter((f) => f !== path)
-  files.unshift(path)
-  const trimmed = files.slice(0, 10)
-  localStorage.setItem('md-quicklook-recent', JSON.stringify(trimmed))
-  recentFiles.value = trimmed
-}
+const recentFiles = computed(() => store.recentFiles)
 
 function isValidMarkdownPath(path: string): boolean {
   const lower = path.toLowerCase()
@@ -43,7 +26,6 @@ async function openFile(path: string) {
   }
   try {
     await store.loadFile(path)
-    addRecentFile(path)
   } catch (e) {
     showError(e instanceof Error ? e.message : String(e))
   }
@@ -53,50 +35,6 @@ async function openRecent(path: string) {
   await openFile(path)
 }
 
-async function onChooseFile() {
-  try {
-    const selected = await open({
-      title: t('dialog.openTitle'),
-      filters: [
-        { name: t('dialog.markdownFilter'), extensions: ['md', 'markdown'] },
-        { name: t('dialog.allFiles'), extensions: ['*'] },
-      ],
-      multiple: false,
-    })
-    if (selected) {
-      await openFile(selected as string)
-    }
-  } catch (e) {
-    showError(e instanceof Error ? e.message : String(e))
-  }
-}
-
-onMounted(async () => {
-  try {
-    unlistenDragDrop = await getCurrentWebviewWindow().onDragDropEvent((event) => {
-      if (event.payload.type === 'over') {
-        isDragOver.value = true
-      } else if (event.payload.type === 'leave') {
-        isDragOver.value = false
-      } else if (event.payload.type === 'drop') {
-        isDragOver.value = false
-        const paths = event.payload.paths
-        if (paths.length > 0) {
-          openFile(paths[0])
-        }
-      }
-    })
-  } catch {
-    // Drag-drop events may not be available in all contexts
-    console.warn('Drag-drop event listener not available')
-  }
-})
-
-onUnmounted(() => {
-  unlistenDragDrop?.()
-})
-
-defineExpose({ addRecentFile })
 </script>
 
 <template>
@@ -132,7 +70,7 @@ defineExpose({ addRecentFile })
                 </p>
               </div>
               <button
-                @click="onChooseFile"
+                @click="$emit('open')"
                 class="btn-swiss btn-primary"
               >
                 {{ $t('welcome.chooseFile') }}
@@ -158,7 +96,7 @@ defineExpose({ addRecentFile })
                 <span class="mt-1 h-3 w-3 rounded-sm" :style="{ background: idx % 2 === 0 ? 'var(--indigo)' : 'var(--teal)' }" />
                 <span class="min-w-0">
                   <span class="block truncate text-[13px] font-bold" style="color: var(--ink);">
-                    {{ path.split('/').pop() || path.split('\\').pop() || path }}
+                    {{ documentName(path) }}
                   </span>
                   <span class="mt-1 block truncate text-[11px]" style="color: var(--faint);">{{ path }}</span>
                 </span>

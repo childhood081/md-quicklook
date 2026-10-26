@@ -25,6 +25,7 @@ pub const MENU_FILE_EXPORT_WORD: &str = "file.export_word";
 pub const MENU_FILE_EXPORT_EXCEL: &str = "file.export_excel";
 pub const MENU_FILE_EXPORT_PDF: &str = "file.export_pdf";
 pub const MENU_FILE_CLOSE_DOCUMENT: &str = "file.close_document";
+pub const MENU_APP_QUIT: &str = "app.quit";
 
 pub const MENU_EDIT_UNDO: &str = "edit.undo";
 pub const MENU_EDIT_REDO: &str = "edit.redo";
@@ -161,10 +162,11 @@ fn build_menu_zh<R: Runtime>(app_handle: &AppHandle<R>) -> tauri::Result<tauri::
         .item(&PredefinedMenuItem::show_all(app_handle, Some("显示全部"))?);
     let app_submenu = app_submenu_builder
         .separator()
-        .item(&PredefinedMenuItem::quit(
-            app_handle,
-            Some("退出 AI 文档快看"),
-        )?)
+        .item(
+            &MenuItemBuilder::with_id(MENU_APP_QUIT, "退出 AI 文档快看")
+                .accelerator("CmdOrCtrl+Q")
+                .build(app_handle)?,
+        )
         .build()?;
 
     // ── File submenu ──
@@ -355,11 +357,7 @@ fn build_menu_en<R: Runtime>(app_handle: &AppHandle<R>) -> tauri::Result<tauri::
     // ── App submenu ──
     let app_submenu_builder =
         SubmenuBuilder::with_id(app_handle, APP_SUBMENU_ID, "AI 文档快看").item(
-            &PredefinedMenuItem::about(
-                app_handle,
-                Some("About AI 文档快看"),
-                Some(about_meta()),
-            )?,
+            &PredefinedMenuItem::about(app_handle, Some("About AI 文档快看"), Some(about_meta()))?,
         );
     #[cfg(target_os = "macos")]
     let app_submenu_builder = app_submenu_builder
@@ -377,10 +375,11 @@ fn build_menu_en<R: Runtime>(app_handle: &AppHandle<R>) -> tauri::Result<tauri::
         .item(&PredefinedMenuItem::show_all(app_handle, Some("Show All"))?);
     let app_submenu = app_submenu_builder
         .separator()
-        .item(&PredefinedMenuItem::quit(
-            app_handle,
-            Some("Quit AI 文档快看"),
-        )?)
+        .item(
+            &MenuItemBuilder::with_id(MENU_APP_QUIT, "Quit AI 文档快看")
+                .accelerator("CmdOrCtrl+Q")
+                .build(app_handle)?,
+        )
         .build()?;
 
     // ── File submenu ──

@@ -103,7 +103,7 @@ App Store 可以继续使用当前 Bundle ID，也可以独立于直接分发版
 | 保存 Markdown 文件 | **是** | 通过 `dialog:allow-save` + Powerbox |
 | 导出 Word / Excel | **是** | 通过 `dialog:allow-save` + Powerbox |
 | 自动保存（原位写入） | **需要验证** | 沙盒下，通过 Powerbox 打开的文件的 security-scoped bookmark 可以继续写入 |
-| .bak 备份创建 | **需要验证** | 在同目录创建 .bak 文件需要该目录的访问权限 |
+| Markdown 保存 | **需要验证** | 当前桌面版不创建 .bak；原子替换仍需用户授权目标目录的访问权限 |
 
 **重要提醒**：macOS App Sandbox 的 Powerbox 机制下，用户通过原生对话框选择的文件会获得临时访问权限。应用需要通过 `NSURLBookmarkCreationWithSecurityScope`（或 Tauri 的对应机制）保存 security-scoped bookmark 以便在后续会话中继续访问该文件。
 

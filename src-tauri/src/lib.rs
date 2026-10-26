@@ -7,9 +7,16 @@ use tauri::{Emitter, Manager};
 mod menu;
 
 struct AppState {
-    initial_file: Mutex<Option<String>>,
+    pending_files: Mutex<PendingFiles>,
     config: Mutex<menu::AppConfig>,
 }
+
+struct PendingFiles {
+    paths: Vec<String>,
+    ready: bool,
+}
+
+static FILE_WRITE_LOCK: Mutex<()> = Mutex::new(());
 
 fn ensure_markdown_path(path: &Path) -> Result<(), String> {
     let extension = path
@@ -22,18 +29,6 @@ fn ensure_markdown_path(path: &Path) -> Result<(), String> {
     } else {
         Err("Only Markdown files can be opened or saved".to_string())
     }
-}
-
-fn backup_path(path: &Path) -> Result<PathBuf, String> {
-    let file_name = path
-        .file_name()
-        .ok_or_else(|| "Invalid file path".to_string())?;
-    let mut backup_name = file_name.to_os_string();
-    backup_name.push(".bak");
-
-    let mut backup = path.to_path_buf();
-    backup.set_file_name(backup_name);
-    Ok(backup)
 }
 
 fn temporary_path(path: &Path) -> Result<PathBuf, String> {
@@ -88,12 +83,13 @@ fn ensure_docx_path(path: &Path) -> Result<(), String> {
 }
 
 /// Atomically write bytes to a file using temp-file + rename.
-/// Does NOT create a .bak backup — call `create_backup` separately when needed.
+/// Temporary replacement files are removed on success; no persistent backup is made.
 fn write_content_atomically(path: &Path, content: &str) -> Result<(), String> {
     write_bytes_atomically(path, content.as_bytes())
 }
 
 fn write_bytes_atomically(path: &Path, bytes: &[u8]) -> Result<(), String> {
+    let _guard = FILE_WRITE_LOCK.lock().map_err(|e| e.to_string())?;
     let parent = path
         .parent()
         .filter(|parent| parent.exists())
@@ -170,11 +166,12 @@ fn canonical_display_path(path: &str) -> String {
 /// Scan process arguments (skipping the executable) for a Markdown file path.
 /// Native paths are handled before URLs because `C:\\...` is otherwise parsed
 /// as a URL with the scheme `c` on Windows.
-fn find_markdown_file<I, S>(args: I, cwd: Option<&Path>) -> Option<String>
+fn find_markdown_files<I, S>(args: I, cwd: Option<&Path>) -> Vec<String>
 where
     I: IntoIterator<Item = S>,
     S: AsRef<str>,
 {
+    let mut paths = Vec::new();
     for arg in args.into_iter().skip(1) {
         let arg = arg.as_ref();
         if arg.starts_with('-') {
@@ -205,15 +202,42 @@ where
 
         if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
             if ext.eq_ignore_ascii_case("md") || ext.eq_ignore_ascii_case("markdown") {
-                return Some(canonical_display_path(&path.to_string_lossy()));
+                let path = canonical_display_path(&path.to_string_lossy());
+                if !paths.contains(&path) {
+                    paths.push(path);
+                }
             }
         }
     }
-    None
+    paths
 }
 
-fn find_markdown_file_in_args() -> Option<String> {
-    find_markdown_file(std::env::args(), None)
+#[cfg(test)]
+fn find_markdown_file<I, S>(args: I, cwd: Option<&Path>) -> Option<String>
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<str>,
+{
+    find_markdown_files(args, cwd).into_iter().next()
+}
+
+fn emit_open_files(app: &tauri::AppHandle, paths: Vec<String>) {
+    let state = app.state::<AppState>();
+    let Ok(mut pending) = state.pending_files.lock() else {
+        return;
+    };
+    if !pending.ready {
+        for path in paths {
+            if !pending.paths.contains(&path) {
+                pending.paths.push(path);
+            }
+        }
+        return;
+    }
+    drop(pending);
+    for path in paths {
+        let _ = app.emit("open-file", path);
+    }
 }
 
 #[cfg(test)]
@@ -230,13 +254,13 @@ mod argument_tests {
 
     #[test]
     fn accepts_file_urls() {
-        let result = find_markdown_file(
-            [
-                "md-quicklook",
-                "file:///Users/example/Documents/%E7%A4%BA%E4%BE%8B%20%E6%96%87%E6%A1%A3.markdown",
-            ],
-            None,
-        );
+        #[cfg(windows)]
+        let url =
+            "file:///C:/Users/example/Documents/%E7%A4%BA%E4%BE%8B%20%E6%96%87%E6%A1%A3.markdown";
+        #[cfg(not(windows))]
+        let url =
+            "file:///Users/example/Documents/%E7%A4%BA%E4%BE%8B%20%E6%96%87%E6%A1%A3.markdown";
+        let result = find_markdown_file(["md-quicklook", url], None);
 
         assert_eq!(
             result
@@ -272,6 +296,78 @@ mod argument_tests {
 
         assert!(result.is_none());
     }
+
+    #[test]
+    fn accepts_multiple_documents_in_one_launch_and_ignores_duplicates() {
+        let result = find_markdown_files(
+            [
+                "md-quicklook.exe",
+                "--flag",
+                "first.md",
+                "中文 文档.markdown",
+                "first.md",
+                "notes.txt",
+            ],
+            Some(Path::new("/launch")),
+        );
+        assert_eq!(result.len(), 2);
+        assert!(result[0].ends_with("first.md"));
+        assert!(result[1].ends_with("中文 文档.markdown"));
+    }
+
+    #[test]
+    fn saving_and_exporting_do_not_create_persistent_backup_or_word_owner_files() {
+        let unique = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let dir =
+            std::env::temp_dir().join(format!("quicklook-save-{}-{}", std::process::id(), unique));
+        fs::create_dir(&dir).unwrap();
+        let md = dir.join("中文.md");
+        let word = dir.join("中文.docx");
+        save_file(md.to_string_lossy().to_string(), "first".into()).unwrap();
+        save_file(md.to_string_lossy().to_string(), "latest".into()).unwrap();
+        export_docx(
+            word.to_string_lossy().to_string(),
+            b"PK-test-payload".to_vec(),
+        )
+        .unwrap();
+        assert_eq!(fs::read_to_string(&md).unwrap(), "latest");
+        let mut files: Vec<_> = fs::read_dir(&dir)
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name())
+            .collect();
+        files.sort();
+        assert_eq!(
+            files,
+            vec![
+                std::ffi::OsString::from("中文.docx"),
+                std::ffi::OsString::from("中文.md")
+            ]
+        );
+        fs::remove_dir_all(dir).unwrap();
+    }
+}
+
+#[tauri::command]
+fn resolve_file_path(path: String) -> Result<String, String> {
+    let path = PathBuf::from(path);
+    ensure_markdown_path(&path)?;
+    let resolved = if path.exists() {
+        fs::canonicalize(&path)
+    } else {
+        let parent = path
+            .parent()
+            .ok_or_else(|| "Invalid file path".to_string())?;
+        let name = path
+            .file_name()
+            .ok_or_else(|| "Invalid file path".to_string())?;
+        fs::canonicalize(parent).map(|parent| parent.join(name))
+    }
+    .map_err(|e| format!("Failed to resolve file path: {}", e))?;
+    ensure_markdown_path(&resolved)?;
+    Ok(resolved.to_string_lossy().to_string())
 }
 
 #[tauri::command]
@@ -290,18 +386,6 @@ fn save_file(path: String, content: String) -> Result<(), String> {
     let path = PathBuf::from(path);
     ensure_markdown_path(&path)?;
     write_content_atomically(&path, &content)
-}
-
-#[tauri::command]
-fn create_backup(path: String) -> Result<String, String> {
-    let path = PathBuf::from(path);
-    ensure_markdown_path(&path)?;
-    if !path.is_file() {
-        return Err("Cannot create backup: file does not exist".to_string());
-    }
-    let backup = backup_path(&path)?;
-    fs::copy(&path, &backup).map_err(|e| format!("Failed to create backup: {}", e))?;
-    Ok(backup.to_string_lossy().to_string())
 }
 
 #[tauri::command]
@@ -346,8 +430,15 @@ fn print_webview(window: tauri::WebviewWindow) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn initial_file(state: tauri::State<'_, AppState>) -> Option<String> {
-    state.initial_file.lock().ok().and_then(|path| path.clone())
+fn initial_files(state: tauri::State<'_, AppState>) -> Result<Vec<String>, String> {
+    let mut pending = state.pending_files.lock().map_err(|e| e.to_string())?;
+    pending.ready = true;
+    Ok(std::mem::take(&mut pending.paths))
+}
+
+#[tauri::command]
+fn quit_app(app: tauri::AppHandle) {
+    app.exit(0);
 }
 
 /// Switch the menu language and persist the choice.
@@ -387,8 +478,8 @@ fn get_language(state: tauri::State<'_, AppState>) -> Result<String, String> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let startup_file = find_markdown_file_in_args();
-    let startup_file_for_event = startup_file.clone();
+    let startup_files =
+        find_markdown_files(std::env::args(), std::env::current_dir().ok().as_deref());
 
     let builder = tauri::Builder::default();
 
@@ -398,12 +489,7 @@ pub fn run() {
     #[cfg(windows)]
     let builder = builder.plugin(tauri_plugin_single_instance::init(|app, argv, cwd| {
         let cwd = PathBuf::from(cwd);
-        if let Some(path) = find_markdown_file(argv, Some(&cwd)) {
-            if let Ok(mut initial_file) = app.state::<AppState>().initial_file.lock() {
-                *initial_file = Some(path.clone());
-            }
-            let _ = app.emit("open-file", path);
-        }
+        emit_open_files(app, find_markdown_files(argv, Some(&cwd)));
 
         if let Some(window) = app.get_webview_window("main") {
             let _ = window.unminimize();
@@ -416,7 +502,10 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .manage(AppState {
-            initial_file: Mutex::new(startup_file),
+            pending_files: Mutex::new(PendingFiles {
+                paths: startup_files,
+                ready: false,
+            }),
             config: Mutex::new(menu::AppConfig::default()),
         })
         .setup(move |app| {
@@ -484,10 +573,12 @@ pub fn run() {
                     // ── Menu actions that need frontend coordination ──
                     // These are emitted as events; the frontend (App.vue) listens and acts.
                     menu::MENU_FILE_OPEN
+                    | menu::MENU_APP_QUIT
                     | menu::MENU_FILE_SAVE
                     | menu::MENU_FILE_SAVE_AS
                     | menu::MENU_FILE_EXPORT_WORD
                     | menu::MENU_FILE_EXPORT_EXCEL
+                    | menu::MENU_FILE_EXPORT_PDF
                     | menu::MENU_FILE_CLOSE_DOCUMENT
                     | menu::MENU_EDIT_UNDO
                     | menu::MENU_EDIT_REDO
@@ -520,26 +611,17 @@ pub fn run() {
                 }
             });
 
-            // Emit the startup file path (if any) to the frontend after a short
-            // delay to let the webview initialize.
-            if let Some(path) = startup_file_for_event {
-                let handle = app.handle().clone();
-                tauri::async_runtime::spawn(async move {
-                    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-                    let _ = handle.emit("open-file", path);
-                });
-            }
-
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            resolve_file_path,
             read_file,
             save_file,
-            create_backup,
             export_xlsx,
             export_docx,
             print_webview,
-            initial_file,
+            initial_files,
+            quit_app,
             switch_language,
             get_language,
         ])
@@ -548,6 +630,7 @@ pub fn run() {
         .run(|app_handle, event| {
             #[cfg(target_os = "macos")]
             if let tauri::RunEvent::Opened { urls } = event {
+                let mut paths = Vec::new();
                 for url in &urls {
                     let path_buf = url
                         .to_file_path()
@@ -556,12 +639,9 @@ pub fn run() {
                         continue;
                     }
                     let path = canonical_display_path(&path_buf.to_string_lossy());
-                    if let Ok(mut initial_file) = app_handle.state::<AppState>().initial_file.lock()
-                    {
-                        *initial_file = Some(path.clone());
-                    }
-                    let _ = app_handle.emit("open-file", path);
+                    paths.push(path);
                 }
+                emit_open_files(app_handle, paths);
             }
             // Suppress unused-variable warnings on non-macOS platforms
             // where the cfg-gated block above does not compile.

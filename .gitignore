@@ -25,3 +25,5 @@ dist-ssr
 *.bak
 *.tmp-*
 src-tauri/target
+.playwright-cli/
+output/playwright/

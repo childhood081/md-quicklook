@@ -110,7 +110,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'npm'
 
       - name: Setup Rust
@@ -121,11 +121,17 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Test document tabs and save isolation
+        run: npm test
+
       - name: Build frontend
         run: npm run build
 
       - name: Check Rust compilation
         run: cargo check --manifest-path src-tauri/Cargo.toml
+
+      - name: Test native paths and save outputs
+        run: cargo test --manifest-path src-tauri/Cargo.toml --lib
 
       - name: Tauri build
         run: npx tauri build --target x86_64-pc-windows-msvc

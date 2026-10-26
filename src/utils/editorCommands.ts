@@ -10,6 +10,16 @@ export type EditorCommand =
 export type EditorCommandHandler = (command: EditorCommand) => boolean | Promise<boolean>
 
 let activeHandler: EditorCommandHandler | null = null
+let activeFlush: (() => void) | null = null
+
+export function registerEditorFlushHandler(handler: () => void): () => void {
+  activeFlush = handler
+  return () => { if (activeFlush === handler) activeFlush = null }
+}
+
+export function flushEditorChanges() {
+  activeFlush?.()
+}
 
 export function registerEditorCommandHandler(handler: EditorCommandHandler): () => void {
   activeHandler = handler

@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { useEditorStore } from '../stores/editor'
 import { useToast } from '../composables/useToast'
 import type { AppMode } from '../stores/editor'
+import { documentName } from '../stores/documentWorkspace'
 
 const store = useEditorStore()
 const { error: toastError, success: toastSuccess } = useToast()
@@ -57,7 +58,7 @@ async function exportExcel() {
   isExporting.value = true
   try {
     const outputPath = await store.exportTablesToExcel()
-    toastSuccess(t('export.exportedTo') + ' ' + outputPath.split('/').pop())
+    toastSuccess(t('export.exportedTo') + ' ' + documentName(outputPath))
   } catch (e) {
     const msg = errorMessage(e)
     if (msg !== t('export.exportCancelled')) toastError(msg)
@@ -86,7 +87,7 @@ async function exportWord() {
   isExportingWord.value = true
   try {
     const outputPath = await store.exportToWord()
-    toastSuccess(t('export.exportedTo') + ' ' + outputPath.split('/').pop())
+    toastSuccess(t('export.exportedTo') + ' ' + documentName(outputPath))
   } catch (e) {
     const msg = errorMessage(e)
     if (msg !== t('export.exportCancelled')) toastError(msg)
@@ -102,8 +103,7 @@ async function exportWord() {
     style="-webkit-app-region: drag; background: rgba(251, 251, 250, 0.92); border-color: var(--line);"
   >
     <div
-      class="grid h-full items-center gap-4"
-      style="grid-template-columns: minmax(180px, 1fr) auto minmax(260px, 1fr);"
+      class="toolbar-layout h-full items-center"
     >
       <!-- Left: file name + path -->
       <div class="min-w-0">
@@ -135,7 +135,7 @@ async function exportWord() {
       </div>
 
       <!-- Right: save status + actions -->
-      <div class="flex items-center justify-end gap-2" style="-webkit-app-region: no-drag">
+      <div class="toolbar-actions flex items-center justify-end gap-2" style="-webkit-app-region: no-drag">
         <span
           v-if="store.saveStatus !== 'idle'"
           class="status-pill"
@@ -180,3 +180,12 @@ async function exportWord() {
     </div>
   </header>
 </template>
+
+<style scoped>
+.toolbar-layout { display: grid; grid-template-columns: minmax(100px, 1fr) auto minmax(320px, 1fr); gap: 16px; }
+.toolbar-actions { white-space: nowrap; }
+.toolbar-actions > * { flex-shrink: 0; }
+@media (max-width: 1000px) {
+  .toolbar-layout { grid-template-columns: minmax(70px, 1fr) auto auto; gap: 10px; }
+}
+</style>

@@ -22,7 +22,8 @@ Current package status:
 - ⌨️ **Source Mode** — Full CodeMirror 6 editor with Markdown syntax support
 - 📑 **Outline Panel** — Auto-generated table of contents from headings (reading mode)
 - 💾 **Smart Auto-Save** — 800ms debounced save to original file, atomic writes (temp-file + rename)
-- 🛡️ **Safe Saves** — Temp-file + atomic rename prevents partial writes; `.bak` backup on open and manual save
+- 🛡️ **Safe Saves** — Temporary replacement writes; opening and saving no longer create `.md.bak` files
+- **Document Tabs** — Open several documents in one window; each tab keeps its own content, mode, zoom, and save status. Closing the last tab returns to recent files.
 - 🌐 **Full-App i18n** — Complete Chinese (zh-CN) and English (en-US) translation with vue-i18n covering native menu, toolbar, welcome page, editor, dialogs, error messages, and all UI text
 - 📊 **Excel Export** — Convert table-only Markdown files to `.xlsx` with number detection, frozen headers, and safe sheet names
 - 📝 **Word Export** — Convert Markdown to `.docx` with reading-mode-inspired styling and Chinese font optimization
@@ -55,6 +56,7 @@ npx tauri dev -- path/to/file.md
 
 # Build for production
 npm run build          # Frontend build
+npm test               # Document workspace regression tests (Node.js 22.6+)
 npx tauri build        # Full Tauri bundle (.dmg on macOS, .exe on Windows)
 
 # Build repeatable macOS beta DMG with hdiutil fallback
@@ -149,7 +151,7 @@ md-quicklook path/to/file.md
 - Direct-download 1.9.0 packages are beta builds; their macOS packages are unsigned and not notarized
 - The Windows installer has not yet completed final installation and uninstall verification on a real Windows machine
 - Mac App Store `1.0.0 (23)` is approved and waiting for manual developer release
-- **Single file** at a time — no tab support yet
+- Tabs keep document text in memory but only mount one active editor. Editor undo history and scroll/cursor positions are reset when switching tabs or modes; content is retained.
 - Windows file association opens files through startup CLI args and forwards later Explorer launches to the existing app window through the Tauri 2 single-instance plugin.
 - **No dark mode** for the reader view yet
 - **Drag-drop** requires the app to be built with Tauri (not in plain browser)

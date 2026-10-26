@@ -3,6 +3,7 @@ import { onMounted, onUnmounted, ref } from 'vue'
 import { useEditorStore } from './stores/editor'
 import { useToast } from './composables/useToast'
 import AppToolbar from './components/AppToolbar.vue'
+import DocumentTabs from './components/DocumentTabs.vue'
 import ReaderView from './components/ReaderView.vue'
 import RichEditor from './components/RichEditor.vue'
 import SourceEditor from './components/SourceEditor.vue'
@@ -13,9 +14,10 @@ import { listen } from '@tauri-apps/api/event'
 import { invoke } from '@tauri-apps/api/core'
 import { open, save } from '@tauri-apps/plugin-dialog'
 import { getCurrentWindow } from '@tauri-apps/api/window'
+import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow'
 import { useI18n } from 'vue-i18n'
 import { setLocale } from './i18n'
-import { runEditorCommand, type EditorCommand } from './utils/editorCommands'
+import { flushEditorChanges, runEditorCommand, type EditorCommand } from './utils/editorCommands'
 import type { MarkdownMetadata } from './utils/markdown'
 
 const store = useEditorStore()
@@ -24,44 +26,49 @@ const { t } = useI18n()
 let unlistenOpenFile: (() => void) | null = null
 let unlistenMenuAction: (() => void) | null = null
 let unlistenLanguageChanged: (() => void) | null = null
+let unlistenDragDrop: (() => void) | null = null
+let unlistenClose: (() => void) | null = null
+let disposed = false
+const closingWindow = ref(false)
 
 const showOutline = ref(true)
-
-function addRecentFile(path: string) {
-  try {
-    const raw = localStorage.getItem('md-quicklook-recent')
-    const files: string[] = raw ? JSON.parse(raw) : []
-    const filtered = files.filter((f) => f !== path)
-    filtered.unshift(path)
-    localStorage.setItem('md-quicklook-recent', JSON.stringify(filtered.slice(0, 10)))
-  } catch {
-    // localStorage may be unavailable
-  }
-}
+const isDragOver = ref(false)
 
 function isValidMarkdownPath(path: string): boolean {
   const lower = path.toLowerCase()
   return lower.endsWith('.md') || lower.endsWith('.markdown')
 }
 
+async function openFiles(paths: string[]) {
+  for (const path of paths) {
+    if (!isValidMarkdownPath(path)) {
+      showWarning(t('error.onlyMarkdown'))
+      continue
+    }
+    try { await store.loadFile(path) } catch (e) {
+      showError(e instanceof Error ? e.message : String(e))
+    }
+  }
+}
+
+async function chooseFiles() {
+  try {
+    const selected = await open({
+      title: t('dialog.openTitle'),
+      filters: [{ name: t('dialog.markdownFilter'), extensions: ['md', 'markdown'] }],
+      multiple: true,
+    })
+    if (selected) await openFiles(Array.isArray(selected) ? selected : [selected])
+  } catch (e) {
+    showError(e instanceof Error ? e.message : String(e))
+  }
+}
+
 async function handleMenuAction(action: string) {
   try {
     switch (action) {
       case 'file.open': {
-        const selected = await open({
-          title: t('dialog.openTitle'),
-          filters: [
-            { name: t('dialog.markdownFilter'), extensions: ['md', 'markdown'] },
-            { name: t('dialog.allFiles'), extensions: ['*'] },
-          ],
-          multiple: false,
-        })
-        if (selected && isValidMarkdownPath(selected as string)) {
-          await store.loadFile(selected as string)
-          addRecentFile(selected as string)
-        } else if (selected) {
-          showWarning(t('error.onlyMarkdown'))
-        }
+        await chooseFiles()
         break
       }
       case 'file.save': {
@@ -71,17 +78,17 @@ async function handleMenuAction(action: string) {
       }
       case 'file.save_as': {
         if (!store.filePath) break
+        const id = store.activeDocumentId
         const savePath = await save({
           title: t('dialog.saveAsTitle'),
+          defaultPath: store.fileName,
           filters: [
             { name: t('dialog.markdownFilter'), extensions: ['md'] },
           ],
         })
         if (savePath) {
-          await invoke('save_file', { path: savePath, content: store.currentContent })
-          await store.loadFile(savePath)
-          addRecentFile(savePath)
-          showSuccess(t('export.savedAs') + ' ' + (savePath as string).split('/').pop())
+          await store.saveFileAs(savePath, id)
+          showSuccess(t('export.savedAs') + ' ' + savePath.replace(/\\/g, '/').split('/').pop())
         }
         break
       }
@@ -128,6 +135,15 @@ async function handleMenuAction(action: string) {
       }
       case 'file.close_document': {
         await closeCurrentFile()
+        break
+      }
+      case 'app.quit': {
+        if (closingWindow.value) break
+        closingWindow.value = true
+        try {
+          await store.flushAll()
+          await invoke('quit_app')
+        } finally { closingWindow.value = false }
         break
       }
       case 'view.reading': {
@@ -232,11 +248,9 @@ async function handleMenuAction(action: string) {
   }
 }
 
-async function closeCurrentFile() {
-  if (!store.filePath) return
-
+async function closeCurrentFile(id = store.activeDocumentId) {
   try {
-    await store.closeFile()
+    await store.closeFile(id)
   } catch (e) {
     showError(e instanceof Error ? e.message : String(e))
   }
@@ -349,13 +363,12 @@ onMounted(async () => {
     unlistenOpenFile = await listen<string>('open-file', async (event) => {
       try {
         await store.loadFile(event.payload)
-        addRecentFile(event.payload)
       } catch (e) {
         showError(e instanceof Error ? e.message : String(e))
       }
     })
   } catch {
-    // Initial CLI args still load through the initial_file command below.
+    // Startup paths still load through the initial_files command below.
   }
 
   // Listen for menu actions from native menu bar
@@ -368,30 +381,64 @@ onMounted(async () => {
   }
 
   try {
-    const initialFile = await invoke<string | null>('initial_file')
-    if (initialFile) {
-      await store.loadFile(initialFile)
-      addRecentFile(initialFile)
-    }
+    const initialFiles = await invoke<string[]>('initial_files')
+    await openFiles(initialFiles)
   } catch (e) {
     showError(e instanceof Error ? e.message : String(e))
+  }
+
+  try {
+    unlistenDragDrop = await getCurrentWebviewWindow().onDragDropEvent((event) => {
+      isDragOver.value = event.payload.type === 'over'
+      if (event.payload.type === 'drop') void openFiles(event.payload.paths)
+    })
+    unlistenClose = await getCurrentWindow().onCloseRequested(async (event) => {
+      flushEditorChanges()
+      if (!store.hasPendingSaves && !closingWindow.value) return
+      event.preventDefault()
+      if (closingWindow.value) return
+      closingWindow.value = true
+      try {
+        await store.flushAll()
+        await getCurrentWindow().destroy()
+      } catch (e) {
+        showError(e instanceof Error ? e.message : String(e))
+      } finally { closingWindow.value = false }
+    })
+  } catch {
+    // Browser previews have no native window or drag/drop events.
+  }
+  if (disposed) {
+    unlistenOpenFile?.()
+    unlistenMenuAction?.()
+    unlistenLanguageChanged?.()
+    unlistenDragDrop?.()
+    unlistenClose?.()
   }
 })
 
 onUnmounted(() => {
+  disposed = true
   unlistenOpenFile?.()
   unlistenMenuAction?.()
   unlistenLanguageChanged?.()
+  unlistenDragDrop?.()
+  unlistenClose?.()
 })
 </script>
 
 <template>
-  <div class="app-shell h-full flex flex-col">
+  <div class="app-shell h-full flex flex-col" :inert="closingWindow">
+    <DocumentTabs v-if="store.documents.length" @open="chooseFiles" @close="closeCurrentFile" />
     <!-- Toolbar: only shown when a file is loaded -->
     <AppToolbar v-if="store.filePath" />
 
     <!-- Main content area -->
-    <div v-if="store.filePath" class="flex-1 flex overflow-hidden">
+    <div
+      v-if="store.filePath" id="active-document" :key="store.activeDocumentId"
+      role="tabpanel" :aria-labelledby="`tab-${store.activeDocumentId}`"
+      :inert="store.activeDocument?.closing || closingWindow" class="flex-1 flex overflow-hidden"
+    >
       <!-- Left: reader / source editor -->
       <div
         class="flex-1 flex overflow-hidden document-zoom"
@@ -409,7 +456,7 @@ onUnmounted(() => {
     </div>
 
     <!-- Welcome page: shown when no file is loaded -->
-    <WelcomePage v-else ref="welcomeRef" />
+    <WelcomePage v-else :is-drag-over="isDragOver" @open="chooseFiles" />
 
     <!-- Global toast notifications -->
     <ToastNotification />

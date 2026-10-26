@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
+import { i18n } from '../i18n'
 import { renderMarkdown, highlightCodeBlocks } from './markdown'
 import {
   pageBackground,
@@ -36,6 +37,7 @@ import {
 const PRINT_CLEANUP_DELAY_MS = 30_000
 const PRINT_ROOT_ID = 'md-quicklook-print-root'
 const PRINT_STYLE_ID = 'md-quicklook-print-style'
+let printInProgress = false
 
 function escapeHtmlText(value: string): string {
   return value
@@ -223,10 +225,15 @@ async function buildPrintHtml(markdown: string, title = 'export.pdf'): Promise<s
  * Windows (Microsoft Print to PDF).
  */
 export async function exportPdf(markdown: string, suggestedFileName?: string): Promise<void> {
-  document.getElementById(PRINT_ROOT_ID)?.remove()
-  document.getElementById(PRINT_STYLE_ID)?.remove()
-
-  const html = await buildPrintHtml(markdown, suggestedFileName)
+  if (printInProgress) throw new Error(i18n.global.t('export.printInProgress'))
+  printInProgress = true
+  let html: string
+  try {
+    html = await buildPrintHtml(markdown, suggestedFileName)
+  } catch (error) {
+    printInProgress = false
+    throw error
+  }
   const parsed = new DOMParser().parseFromString(html, 'text/html')
   const sourceStyles = Array.from(parsed.querySelectorAll('style'))
     .map((style) => style.textContent ?? '')
@@ -270,6 +277,9 @@ export async function exportPdf(markdown: string, suggestedFileName?: string): P
 
   document.head.appendChild(printStyle)
   document.body.appendChild(printRoot)
+  const previousTitle = document.title
+  const printTitle = (suggestedFileName || 'export.pdf').replace(/\.pdf$/i, '')
+  document.title = printTitle
 
   let cleanupTimer: ReturnType<typeof setTimeout> | null = null
   const cleanup = () => {
@@ -280,13 +290,15 @@ export async function exportPdf(markdown: string, suggestedFileName?: string): P
     window.removeEventListener('afterprint', cleanup)
     printRoot.remove()
     printStyle.remove()
+    if (document.title === printTitle) document.title = previousTitle
+    printInProgress = false
   }
 
   window.addEventListener('afterprint', cleanup, { once: true })
 
   try {
     await invoke('print_webview')
-    cleanupTimer = setTimeout(cleanup, PRINT_CLEANUP_DELAY_MS)
+    if (printInProgress) cleanupTimer = setTimeout(cleanup, PRINT_CLEANUP_DELAY_MS)
   } catch (error) {
     cleanup()
     throw error instanceof Error ? error : new Error(String(error))
