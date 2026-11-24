@@ -9,6 +9,7 @@ import { history, redoCommand, undoCommand } from '@milkdown/kit/plugin/history'
 import { listener, listenerCtx } from '@milkdown/kit/plugin/listener'
 import { useEditorStore } from '../stores/editor'
 import { callCommand, replaceAll } from '@milkdown/utils'
+import '../styles/document-headings.css'
 import { flushEditorChanges, registerEditorCommandHandler, registerEditorFlushHandler, type EditorCommand } from '../utils/editorCommands'
 import { parseFrontMatter } from '../utils/markdown'
 import type { Node as ProseNode } from '@milkdown/kit/prose/model'
@@ -266,49 +267,6 @@ function insertTableCommand() {
   font-size: 16px;
   color: #222321;
   outline: none;
-}
-
-/* ── Headings ── */
-.editor-paper-wrapper .milkdown h1 {
-  font-size: clamp(36px, 5vw, 56px);
-  font-weight: 900;
-  line-height: 0.98;
-  margin: 0 0 0.65em;
-  padding-bottom: 0.35em;
-  border-bottom: 1px solid var(--line-strong);
-  color: var(--ink);
-  text-transform: uppercase;
-}
-
-.editor-paper-wrapper .milkdown h2 {
-  font-size: 28px;
-  font-weight: 850;
-  line-height: 1.05;
-  margin: 1.35em 0 0.45em;
-  color: var(--ink);
-}
-
-.editor-paper-wrapper .milkdown h3 {
-  font-size: 20px;
-  font-weight: 800;
-  margin: 1.1em 0 0.35em;
-  color: var(--ink);
-}
-
-.editor-paper-wrapper .milkdown h4 {
-  font-size: 16px;
-  font-weight: 800;
-  margin: 0.6em 0 0.3em;
-  color: var(--charcoal);
-  text-transform: uppercase;
-}
-
-.editor-paper-wrapper .milkdown h5,
-.editor-paper-wrapper .milkdown h6 {
-  font-size: 1em;
-  font-weight: 750;
-  margin: 0.5em 0 0.2em;
-  color: var(--muted);
 }
 
 /* ── Paragraph ── */

@@ -1,0 +1,42 @@
+/* Document headings shared by reading and rich-text editing. */
+:is(.reader-content, .editor-paper-wrapper .milkdown) :is(h1, h2, h3, h4, h5, h6) {
+  color: var(--ink);
+  font-weight: 700;
+  line-height: 1.35;
+  margin: 1.05em 0 0.45em;
+  overflow-wrap: anywhere;
+}
+
+:is(.reader-content, .editor-paper-wrapper .milkdown) :is(h1, h2, h3, h4, h5, h6):first-child {
+  margin-top: 0;
+}
+
+:is(.reader-content, .editor-paper-wrapper .milkdown) h1 {
+  font-size: var(--document-h1-size, 30px);
+  font-weight: 750;
+  line-height: 1.25;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--line-strong);
+}
+
+:is(.reader-content, .editor-paper-wrapper .milkdown) h2 {
+  font-size: var(--document-h2-size, 24px);
+}
+
+:is(.reader-content, .editor-paper-wrapper .milkdown) h3 {
+  font-size: 20px;
+}
+
+:is(.reader-content, .editor-paper-wrapper .milkdown) h4 {
+  font-size: 18px;
+}
+
+:is(.reader-content, .editor-paper-wrapper .milkdown) :is(h5, h6) {
+  font-size: 16px;
+  color: var(--charcoal);
+}
+
+:is(.reader-content, .editor-paper-wrapper .milkdown) h6 {
+  font-size: 15px;
+  font-weight: 650;
+}
